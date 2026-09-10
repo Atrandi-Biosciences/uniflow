@@ -1,0 +1,66 @@
+nextflow_workflow {
+
+    name "Test Workflow RNA"
+    script "workflows/rna.nf"
+    workflow "RNA"
+
+    //tag-definition
+    tag "workflow"
+    tag "rna"
+
+    test("Should run without failures") {
+        skip()
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"
+            }
+            workflow {
+                """
+                // rna_libraries 
+                input[0] = Channel.of([
+                    [ sample_name: 'sample1', library_type: 'RNA' ],
+                    
+                    // read_file_1
+                    //ANTGACCTTAAGTTCATTGACACCACCTCCAAGTTTGGCCATGGCCGCTTCCAGACCATGGAGGAGAAGAAAGCATTCATGGGACCACTGAAGAAAGACCGAATTGCAAAGGAAGAAGAAGCTTAATGCCAGGAACAGATTTTGCAGT
+                    file("${projectDir}/test_data/subworkflows/rna_processing/sample1_RNA_R1.fastq.gz"),
+                
+                    // read_file_2
+                    //GTGAGACTAGGACACCTTGAACTCCACCATCTAAGGCATACCGTGACTTGAGTGGCTGTCGGCTGAGCTT
+                    file("${projectDir}/test_data/subworkflows/rna_processing/sample1_RNA_R2.fastq.gz"),
+                ])
+
+                // star_index_folder ------------- ATTENTION --------------- Due to the file size, the input data will be (temporarily) used from another test-case.
+                input[1] = file("${projectDir}/test_data/modules/rna_processing/align_gene_expression/star_index_chr13")
+
+                // whitelists
+                input[2] = Channel.of(
+                    [
+                        file("${projectDir}/test_data/modules/rna_processing/align_gene_expression/bcD_24.txt"),
+                        file("${projectDir}/test_data/modules/rna_processing/align_gene_expression/bcC_24.txt"),
+                        file("${projectDir}/test_data/modules/rna_processing/align_gene_expression/bcB_24.txt"),
+                        file("${projectDir}/test_data/modules/rna_processing/align_gene_expression/bcA_24_wRT.txt")
+                    ]
+                )
+
+                // sample_barcode_mappings
+                input[3] = Channel.of(
+                    file("${projectDir}/test_data/subworkflows/rna_processing/Lib1_RNA_L001_barcodes_mapping.parquet"),
+                    file("${projectDir}/test_data/subworkflows/rna_processing/Lib1_RNA_L001_correct_barcode_reads.parquet")
+                )
+
+                // trimming_length
+                input[4] = 100
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            //assert snapshot(workflow.out).match()
+        }
+
+    }
+
+}

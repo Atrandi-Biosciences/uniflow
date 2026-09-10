@@ -1,0 +1,35 @@
+name: Build and Publish Uniflow Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  
+permissions:
+  contents: write 
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # get the history and the tags
+
+      - name: Create Uniflow Release
+        uses: softprops/action-gh-release@v2
+        with:
+          #use the tag name (example v1.0.0) for release
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          
+          # GitHub automatically generates the release notes here based on the commits.
+          # However, since we already have a CHANGELOG.md file, this line reads your completed changelog.
+          body_path: CHANGELOG.md 
+          
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

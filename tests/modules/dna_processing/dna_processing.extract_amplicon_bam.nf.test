@@ -1,0 +1,40 @@
+nextflow_process {
+
+    name "Test Process DNA_PROCESSING.EXTRACT_AMPLICON_BAM"
+    script "modules/dna_processing.nf"
+    process "EXTRACT_AMPLICON_BAM"
+
+    //tag-definition
+    tag "process"
+    tag "process-dna_processing"
+    tag "extract_amplicon_bam"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                [
+                    sample_name: 'sample1'
+                ],
+
+                // bam
+                file("${projectDir}/test_data/modules/dna_processing/extract_amplicon_bam/aligned.sorted.bam"),
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+        }
+
+    }
+
+}

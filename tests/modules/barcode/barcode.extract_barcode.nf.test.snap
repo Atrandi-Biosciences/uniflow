@@ -1,0 +1,56 @@
+{
+    "Extract RNA barcode should run without failures": {
+        "content": [
+            {
+                "0": [
+                    [
+                        "Lib1_RNA_L002_R2_001.fastq.gz:md5,3e116023597a39068de875c0c709dd4e",
+                        "Lib1_RNA_L002",
+                        "RNA",
+                        "Lib1_RNA_L002_barcodes.parquet:md5,f1c562ce2d4658f94b7aac68c5ca6705"
+                    ]
+                ],
+                "barcode_extracted": [
+                    [
+                        "Lib1_RNA_L002_R2_001.fastq.gz:md5,3e116023597a39068de875c0c709dd4e",
+                        "Lib1_RNA_L002",
+                        "RNA",
+                        "Lib1_RNA_L002_barcodes.parquet:md5,f1c562ce2d4658f94b7aac68c5ca6705"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-06-08T10:46:58.332957576",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    },
+    "Extract DNA barcode should run without failures": {
+        "content": [
+            {
+                "0": [
+                    [
+                        "Lib2_DNA_L001_R2_001.fastq.gz:md5,61cbf4126f34b5b10e7b879e162e8a02",
+                        "Lib2_DNA_L002",
+                        "DNA",
+                        "Lib2_DNA_L002_barcodes.parquet:md5,94494c058d6453d221ed83aab455e1a2"
+                    ]
+                ],
+                "barcode_extracted": [
+                    [
+                        "Lib2_DNA_L001_R2_001.fastq.gz:md5,61cbf4126f34b5b10e7b879e162e8a02",
+                        "Lib2_DNA_L002",
+                        "DNA",
+                        "Lib2_DNA_L002_barcodes.parquet:md5,94494c058d6453d221ed83aab455e1a2"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-06-08T10:47:10.475164071",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

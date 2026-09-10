@@ -1,0 +1,43 @@
+{
+  // --- Formatting (Black) ---
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+
+  // --- Linting & fixing (Ruff) ---
+  "ruff.enable": true,
+  "ruff.organizeImports": true,
+  "ruff.fixAll": true,
+  "python.linting.enabled": true,
+  "python.linting.ruffEnabled": true,
+
+  // --- Type-checking (Pylance) ---
+  "python.analysis.typeCheckingMode": "strict",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportUnusedImport": "error",
+    "reportMissingTypeStubs": "none"
+  },
+
+  // Optional: hide cache dirs
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.ruff_cache": true,
+    "**/.mypy_cache": true
+  },
+
+  // --- Nextflow / Groovy ---
+  "files.associations": {
+    "*.nf": "nextflow",
+    "*.config": "nextflow"
+  },
+  "github.copilot.enable": {
+    "*": true,
+    "nextflow": true,
+    "groovy": true
+  },
+  "nextflow.telemetry.enabled": false
+}

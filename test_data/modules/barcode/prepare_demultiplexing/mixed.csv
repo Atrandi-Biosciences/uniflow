@@ -1,0 +1,5 @@
+sample_name,fastq_1,fastq_2,library_type
+sample1,projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib1_RNA_L001_R1_001.fastq.gz,projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib1_RNA_L001_R2_001.fastq.gz,RNA
+sample1,projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib2_DNA_L001_R1_001.fastq.gz,projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib2_DNA_L001_R2_001.fastq.gz,DNA
+sample1,projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib1_RNA_L002_R1_001.fastq.gz,projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib1_RNA_L002_R2_001.fastq.gz,RNA
+sample1,projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib2_DNA_L002_R1_001.fastq.gz,projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib2_DNA_L002_R2_001.fastq.gz,DNA

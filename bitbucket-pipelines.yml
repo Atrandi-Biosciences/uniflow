@@ -1,0 +1,388 @@
+# Use a skeleton to build, test and deploy using manual and parallel steps
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+image: atlassian/default-image:3
+
+# a complete clone is necessary for all tests to run.
+clone:
+  depth: full
+
+definitions:
+  caches:
+    nextflow: ~/.nextflow
+    nf-test: ~/.nf-test
+  steps:
+    - step: &run-end2end-test
+        name: "nf-test (End2end)"
+        runs-on:
+            - end2end
+            - self.hosted
+            - linux.shell
+        script:
+         - |
+            echo "Run tests before release."
+            
+            TEST_TYPE="uniflow"
+
+            # prevents nextflow instances from interfering with each other when writing simultaneously.
+            export NXF_HOME="$BITBUCKET_CLONE_DIR/.nextflow"
+
+            echo "=== set java 1.17 ==="
+            export PATH=$PATH:$HOME/.local/bin:$HOME/bin:/usr/local/bin
+            export JAVA_HOME=/usr/lib/jvm/java-1.17.0-openjdk-amd64
+            export PATH=$JAVA_HOME/bin:$PATH
+            java -version
+
+            echo "=== forces docker to use the local socket instead of TCP ==="
+            unset DOCKER_HOST
+            export DOCKER_HOST="unix:///var/run/docker.sock"
+
+            echo "=== generate dynamic report names ==="
+            TIMESTAMP=$(date +"%Y%m%d_%H%M")
+            REPORT_FILE="report_${TEST_TYPE}_${TIMESTAMP}"
+            echo "generated report ${REPORT_FILE}"
+            echo "$REPORT_FILE" > .report_name.txt
+            # run nf-test
+
+            echo "Running tests shard $SHARD on branch ${BITBUCKET_BRANCH}"
+
+            # force nextflow to start docker containers with the runner's user ID.
+            export NXF_CONTAINER_OPTIONS="-u $(id -u):$(id -g)"
+
+            NXF_VER=25.04.8 nf-test test --tag uniflow --junitxml "${REPORT_FILE}".xml --profile docker
+
+            echo "=== nf-test shard $SHARD completed ==="
+        after-script:
+          - echo "=== start report-upload to S3 ==="
+          - REPORT_FILE=$(cat "$BITBUCKET_CLONE_DIR/.report_name.txt")
+          - aws s3 cp "$BITBUCKET_CLONE_DIR/$REPORT_FILE".xml "s3://$S3_BUCKET/$S3_REPORT_PREFIX/$REPORT_FILE".xml
+          - aws s3 cp "$BITBUCKET_CLONE_DIR/tests/pipeline/main.nf.test.snap" "s3://$S3_BUCKET/$S3_REPORT_PREFIX/main.nf.test.snap"
+
+    - step: &regression-tests-bitbucket-cloud-runner
+        name: nf-test (regression)
+        image:
+          name: 262891513864.dkr.ecr.eu-north-1.amazonaws.com/qa/regression-tests:1.0.0-20260702
+          aws:
+            access-key: $ECR_ACCESS_KEY_ID
+            secret-key: $ECR_SECRET_KEY
+        services:
+          - docker
+        size: 4x 
+        caches:
+          - nextflow
+          - nf-test
+        script:
+          - |
+            TEST_TYPE="regression"
+            
+            echo "=== configure AWS ==="
+            aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+            aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+            aws configure set region $AWS_DEFAULT_REGION
+
+            SHARD=$((BITBUCKET_PARALLEL_STEP + 1))
+            TOTALSHARDS=$BITBUCKET_PARALLEL_STEP_COUNT
+            echo "=== SHARD DEBUG ==="
+            echo "SHARD = '$SHARD'"
+            echo "BITBUCKET_PARALLEL_STEP = '$BITBUCKET_PARALLEL_STEP'"
+            echo "BITBUCKET_PARALLEL_STEP_COUNT = '$BITBUCKET_PARALLEL_STEP_COUNT'"
+
+            java -version
+
+            nextflow -version
+
+            nf-test version
+
+            echo "=== generate dynamic report names ==="
+            TIMESTAMP=$(date +"%Y%m%d_%H%M")
+            REPORT_FILE="report_${TEST_TYPE}_${TIMESTAMP}_${SHARD}_${TOTALSHARDS}"
+            echo "generated report ${REPORT_FILE}"
+            echo "$REPORT_FILE" > .report_name.txt
+            
+            export LANG=C.UTF-8 LC_ALL=C.UTF-8
+
+            # run nf-test
+            echo "Running tests on branch: ${BITBUCKET_BRANCH}"
+            echo "Commit: ${BITBUCKET_COMMIT}"          
+                    
+            NXF_VER=25.04.8 nf-test test --tag process,workflow --shard $SHARD/$TOTALSHARDS --junitxml "${REPORT_FILE}".xml --profile docker
+        after-script:
+          - echo "=== start report-upload to S3 ==="
+          - REPORT_FILE=$(cat "$BITBUCKET_CLONE_DIR/.report_name.txt")
+          - aws s3 cp "$BITBUCKET_CLONE_DIR/$REPORT_FILE".xml "s3://$S3_BUCKET/$S3_REPORT_PREFIX/$REPORT_FILE".xml
+
+
+pipelines:
+  default:
+    - step:
+        name: Skip tests
+        script:
+          - echo "The tests are run on release, feature, and QA branches."
+
+  branches:
+    'release/*':
+      - step:
+          <<: *run-end2end-test
+          name: "Run nf-tests before release"
+  
+    'feature/*':
+      - parallel:
+        - step:
+            <<: *regression-tests-bitbucket-cloud-runner
+            name: "Test Shard 1/4"
+        - step:
+            <<: *regression-tests-bitbucket-cloud-runner
+            name: "Test Shard 2/4"
+        - step:
+            <<: *regression-tests-bitbucket-cloud-runner
+            name: "Test Shard 3/4"
+        - step:
+            <<: *regression-tests-bitbucket-cloud-runner
+            name: "Test Shard 4/4"
+  
+    'qa/*':
+      - parallel:
+        - step:
+            <<: *regression-tests-bitbucket-cloud-runner
+            name: "Test Shard 1/4"
+        - step:
+            <<: *regression-tests-bitbucket-cloud-runner
+            name: "Test Shard 2/4"
+        - step:
+            <<: *regression-tests-bitbucket-cloud-runner
+            name: "Test Shard 3/4"
+        - step:
+            <<: *regression-tests-bitbucket-cloud-runner
+            name: "Test Shard 4/4"
+
+    main:
+      - step:
+          name: Calculate the version with python semanric release
+          image: python:3.13
+          clone:
+            depth: full
+          script:
+            - apt-get update && apt-get install -y jq
+            - pip install python-semantic-release==10.6.1 GitPython==3.1.46 gitdb==4.0.12
+            
+            - echo "=== Installed versions ==="
+            - pip freeze | grep -Ei "semantic|gitpython|gitdb"
+
+            - git config --global user.name "pipeline bot"
+            - git config --global user.email "pipeline@atrandi.com"
+
+            - LAST_VERSION=$(semantic-release version --print-last-released)
+            - NEXT_VERSION=$(semantic-release version --print) #calculate and get the last version
+            
+            # no new version
+            - |
+              if [ -n "$LAST_VERSION" ] && [ "$LAST_VERSION" = "$NEXT_VERSION" ]; then
+                echo "No new release required. Nothing to do."
+                exit 0
+              fi
+
+            - echo "Next version $NEXT_VERSION detected. continue with branch/pr"
+            - BRANCH_NAME="rc-v${NEXT_VERSION}"
+
+            # create the temp branch and switch to the branch
+            - git checkout -b "$BRANCH_NAME"
+
+            - semantic-release version --no-push
+
+            # push branch and tag
+            - git push -u origin "$BRANCH_NAME"
+            - git remote set-url origin https://x-token-auth:${BITBUCKET_TOKEN}@bitbucket.org/${BITBUCKET_WORKSPACE}/${BITBUCKET_REPO_SLUG}.git
+            - git push origin $BRANCH_NAME --tags
+
+            # create the PR
+            - |
+              PR_RESPONSE=$(curl -sS -X POST -H "Authorization: Bearer ${BITBUCKET_TOKEN}" \
+              -H "Content-Type: application/json" \
+              https://api.bitbucket.org/2.0/repositories/${BITBUCKET_WORKSPACE}/${BITBUCKET_REPO_SLUG}/pullrequests \
+              -d '{
+                "title": "chore: release version '"$NEXT_VERSION"'",
+                "source": { "branch": { "name": "'"$BRANCH_NAME"'" } },
+                "destination": { "branch": { "name": "main" } },
+                "description": "Automated release update for nextflow.config and CHANGELOG.md."
+              }')
+            
+            # get the new PR-ID
+            - PR_ID=$(echo "$PR_RESPONSE" | jq '.id')
+            - echo "Pull Request create ${PR_ID} successful"
+          
+            # automated merge back to the main
+            - |
+              HTTP_STATUS=$(curl -sS -X POST \
+              -H "Authorization: Bearer ${BITBUCKET_TOKEN}" \
+              -H "Content-Type: application/json" \
+              "https://api.bitbucket.org/2.0/repositories/${BITBUCKET_WORKSPACE}/${BITBUCKET_REPO_SLUG}/pullrequests/${PR_ID}/merge" \
+              -d '{
+              	"merge_strategy": "merge_commit",
+                "message": "chore(release): v'"$NEXT_VERSION"' [skip ci]",
+                "close_source_branch": true
+              }')
+
+            # check if the temporary branch exist and delete it
+            - |
+              if git ls-remote --exit-code --heads origin "$BRANCH_NAME" > /dev/null 2>&1; then
+                echo "branch "$BRANCH_NAME" exists"
+                git push origin --delete "$BRANCH_NAME"
+                echo "deleted branch "$BRANCH_NAME" successful"
+              fi
+
+  custom:
+    build-release:
+      - step:
+          name: "Publish Release to GitHub (Single Clean Commit + Tag)"
+          clone:
+            depth: full
+          script:
+            - apt-get update
+            - apt-get install -y rsync
+
+            # Token and repository URL
+            - export GITHUB_REPO="https://x-access-token:${GITHUB_PAT}@github.com/Atrandi-Biosciences/uniflow.git"
+
+            # 1. Determine the latest tag from Bitbucket
+            - git fetch --tags --force
+            - export LATEST_TAG=$(git describe --tags --abbrev=0)
+            - echo "Current tag $LATEST_TAG"
+
+            # 2. Copy Bitbucket content (excluding .git) to a temporary folder
+            - mkdir -p /tmp/release-content
+            - rsync -a --exclude='.git' ./ /tmp/release-content/
+
+            # 3. Prepare GitHub repository (works even if main does not exist)
+            - mkdir -p /tmp/github-repo
+            - cd /tmp/github-repo
+            - git init
+            - git remote add origin $GITHUB_REPO
+
+            # 4. Try to fetch existing main branch
+            - |
+              if git fetch origin main; then
+                echo "main branch exists, reusing history"
+                git checkout -b main origin/main
+                git rm -rf . || true
+                git clean -fdx
+              else
+                echo "main branch does not exist, creating a fresh clean branch"
+                git checkout --orphan main
+              fi
+
+            # 5. Copy the current Bitbucket state into the repository
+            - rsync -a /tmp/release-content/ ./
+
+            # 6. Set Git identity
+            - git config user.name "Bitbucket Pipeline"
+            - git config user.email "pipeline@atrandi.com"
+
+            # 7. Create a clean commit
+            - git add -A
+            - |
+              if git diff --cached --quiet; then
+                echo "No file changes, skipping commit."
+              else
+                git commit -m "Release $LATEST_TAG"
+              fi
+
+            # 8. Create/update the tag and push everything
+            - git tag -f $LATEST_TAG
+            - git push origin main --force
+            - git push origin $LATEST_TAG --force
+
+
+  pull-requests:
+    '**':
+      - parallel:
+          - step:
+              name: 'Lint Changed Python Files'
+              image: python:3.11-slim
+              script:
+                # Install git and black
+                - apt-get update && apt-get install -y git
+                - pip install black==26.3.1
+
+                # Determine the base commit to compare against
+                - |
+                  if [ -n "$BITBUCKET_PR_DESTINATION_BRANCH" ]; then
+                    git fetch origin "$BITBUCKET_PR_DESTINATION_BRANCH"
+                    BASE_COMMIT="origin/$BITBUCKET_PR_DESTINATION_BRANCH"
+                  else
+                    BASE_COMMIT="HEAD~1"
+                  fi
+
+                # Get changed Python files (excluding deleted) and run black
+                - |
+                  CHANGED_PY_FILES=$(git diff --diff-filter=d --name-only "$BASE_COMMIT" -- '*.py' | grep -v '^$' || true)
+
+                  if [ -z "$CHANGED_PY_FILES" ]; then
+                    echo "No Python files changed. Skipping black linting."
+                    exit 0
+                  fi
+
+                  echo "Changed Python files:"
+                  echo "$CHANGED_PY_FILES"
+                  echo "$CHANGED_PY_FILES" | xargs black --check --diff
+          - step:
+              name: 'Verify Latch metadata generation'
+              image: python:3.14.4-slim
+              script:
+                - apt-get update && apt-get install -y --no-install-recommends build-essential
+                - pip install latch==2.71.2
+                - mkdir -p ~/.latch && printf '%s' "$LATCH_AUTH_TOKEN" > ~/.latch/token
+                - |
+                  printf '%s' '{"workspace_id": "26923", "name": "Atrandi Biosciences"}' > ~/.latch/workspace
+                - latch generate-metadata "$BITBUCKET_CLONE_DIR/nextflow_schema.json" --nextflow
+          - step:
+              name: 'Verify Nextflow stub-run and list container images'
+              image: nextflow/nextflow:25.04.8
+              caches:
+                - nextflow
+              artifacts:
+                - containers.json
+              script:
+                - nextflow config -profile docker > /dev/null
+                - |
+                  mkdir -p /tmp/qa_star_idx
+                  touch $(tail -n +2 test/ci_stub_samplesheet.csv | cut -d, -f2,3 | tr ',' '\n')
+                - |
+                  nextflow run main.nf \
+                    --experiment_id 20260101_RAR-000_qa \
+                    --input_csv "$BITBUCKET_CLONE_DIR/test/ci_stub_samplesheet.csv" \
+                    --amplicon_fasta /dev/null \
+                    --star_index /tmp/qa_star_idx \
+                    --product_id B4_24_v1 \
+                    --run_variant_calling true \
+                    --variant_callers freebayes,bcftools,gatkhc,vardict \
+                    -stub-run
+                - |
+                  nextflow -q inspect main.nf \
+                    -profile docker \
+                    -format json > containers.json
+                  cat containers.json
+      - step:
+          name: 'Container image manifest check'
+          # Use official skopeo image. It is Fedora-based and has no git...
+          # so disable the default repo clone for this reason.
+
+          image: quay.io/skopeo/stable:latest
+          clone:
+            enabled: false
+          script:
+            # skopeo is preinstalled; install jq to parse the json from the previous step.
+            - yum install -y jq
+            - |
+              images=$(jq -r '.processes[].container | select(. != null and . != "")' containers.json | sort -u)
+              echo "=== images to verify ==="; echo "$images"
+              status=0
+              for img in $images; do
+                # skopeo queries each registry directly
+                if skopeo inspect --raw "docker://$img" > /dev/null; then
+                  echo "OK   $img"
+                else
+                  echo "FAIL $img  (not resolvable in its registry)"
+                  status=1
+                fi
+              done
+              exit $status

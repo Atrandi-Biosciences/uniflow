@@ -1,0 +1,85 @@
+nextflow_process {
+
+    name "Test Process FALCO"
+    script "modules/falco/main.nf"
+    process "FALCO"
+
+    //tag-definition
+    tag "process"
+    tag "falco"
+
+    test("DNA: Falco should run without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    
+                    // library_id
+                    "Lib2_DNA_L001",
+
+                    // library_type
+                    "DNA",
+
+                    // read1
+                    file("${projectDir}/test_data/modules/falco/DNA/Lib2_DNA_L001_R1_001.fastq.gz"),
+
+                    // read2
+                    file("${projectDir}/test_data/modules/falco/DNA/Lib2_DNA_L001_R2_001.fastq.gz"),
+
+                    // validation_done
+                    true
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+        }
+
+    }
+
+    test("RNA: Falco should run without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    
+                    // library_id
+                    "Lib2_RNA_L001",
+
+                    // library_type
+                    "RNA",
+
+                    // read1
+                    file("${projectDir}/test_data/modules/falco/RNA/Lib1_RNA_L001_R1_001.fastq.gz"),
+
+                    // read2
+                    file("${projectDir}/test_data/modules/falco/RNA/Lib1_RNA_L001_R2_001.fastq.gz"),
+
+                    // validation_done
+                    true
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+        }
+
+    }
+
+}

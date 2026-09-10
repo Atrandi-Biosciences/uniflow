@@ -1,0 +1,105 @@
+{
+    "Should run without failures": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "sample_name": "sample1",
+                            "library_type": "DNA"
+                        },
+                        "amplicon",
+                        [
+                            "sample1_mapping_rates.txt:md5,add7286fae0683e3035165d20d3402bd",
+                            "sample1_amplicon_coverage.tsv:md5,774437191a8e730b3e33296007f5cecf"
+                        ]
+                    ]
+                ],
+                "1": [
+                    
+                ],
+                "2": [
+                    
+                ],
+                "3": [
+                    
+                ],
+                "4": [
+                    [
+                        {
+                            "sample_name": "sample1",
+                            "library_type": "DNA"
+                        },
+                        [
+                            "aligned.sorted.bam.bai:md5,ac4223cc471dfa4d8eef5f365f4e2a15",
+                            "aligned.sorted.bam:md5,3b7df8b7e901b57d09b10bdca6c0420a"
+                        ]
+                    ]
+                ],
+                "5": [
+                    
+                ],
+                "6": [
+                    
+                ],
+                "7": [
+                    
+                ],
+                "8": [
+                    
+                ],
+                "dev": [
+                    
+                ],
+                "h5ad": [
+                    
+                ],
+                "internal_metrics": [
+                    
+                ],
+                "metrics": [
+                    [
+                        {
+                            "sample_name": "sample1",
+                            "library_type": "DNA"
+                        },
+                        "amplicon",
+                        [
+                            "sample1_mapping_rates.txt:md5,add7286fae0683e3035165d20d3402bd",
+                            "sample1_amplicon_coverage.tsv:md5,774437191a8e730b3e33296007f5cecf"
+                        ]
+                    ]
+                ],
+                "metrics_parquet": [
+                    
+                ],
+                "out": [
+                    [
+                        {
+                            "sample_name": "sample1",
+                            "library_type": "DNA"
+                        },
+                        [
+                            "aligned.sorted.bam.bai:md5,ac4223cc471dfa4d8eef5f365f4e2a15",
+                            "aligned.sorted.bam:md5,3b7df8b7e901b57d09b10bdca6c0420a"
+                        ]
+                    ]
+                ],
+                "qc": [
+                    
+                ],
+                "variant_bam_bai": [
+                    
+                ],
+                "variant_filtered_amplicon_reads": [
+                    
+                ]
+            }
+        ],
+        "timestamp": "2026-09-07T12:31:12.494431233",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.04.8"
+        }
+    }
+}

@@ -1,0 +1,31 @@
+[tool.semantic_release]
+commit_parser = "conventional"
+allow_zero_version = true
+major_on_zero = true
+commit_message = "chore(release): v{version} [skip ci]"
+
+version_variables = [
+  "nextflow.config:version"
+]
+
+[tool.semantic_release.commit_parser_options]
+# our rules
+minor_tags = ["feat"]
+patch_tags = ["fix"]
+allowed_tags = ["feat", "fix", "chore", "docs", "ci", "test"]
+parse_squash_commits = true
+ignore_merge_commits = false
+
+[tool.semantic_release.branches.main]
+match = "(main|rc-v.*)"
+prerelease = false
+
+[tool.semantic_release.remote]
+type = "bitbucket"
+
+[tool.semantic_release.remote.token]
+env = "BITBUCKET_TOKEN"
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
+output_format = "md"

@@ -1,0 +1,14 @@
+source_id,library_type,modality,metric_key,value
+sample1,RNA,gene_expression,total_cells_over_1000_umis,0.0
+sample1,RNA,gene_expression,total_raw_reads,150000.0
+sample1,RNA,gene_expression,filtered_cells,0.0
+sample1,RNA,gene_expression,total_reads_in_cells,0.0
+sample1,RNA,gene_expression,fraction_reads_in_cells,0.0
+sample1,RNA,gene_expression,total_barcodes,1049.0
+sample1,DNA,amplicon,total_reads,125000.0
+sample1,DNA,amplicon,filtered_reads,123838.0
+sample1,DNA,amplicon,fraction_usable_reads,0.990704
+sample1,DNA,amplicon,total_usable_reads,123838.0
+sample1,DNA,amplicon,filtered_cells,157.0
+sample1,DNA,amplicon,total_usable_reads_in_cells,87825.0
+sample1,DNA,amplicon,fraction_usable_reads_in_cells,0.7026

@@ -1,0 +1,70 @@
+nextflow_process {
+
+    name "Test Process SHARED.CONCATENATE_PARQUET"
+    script "modules/shared.nf"
+    process "CONCATENATE_PARQUET"
+
+    //tag-definition
+    tag "process"
+    tag "shared"
+    tag "concatenate_parquet"
+
+    test("CONCATENATE_PARQUET Simple sample, library_type DNA. Should run without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"                
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    [ sample_name: 'sample1', library_type: 'DNA' ],
+
+                    // read1_files
+                    [
+                    file("${projectDir}/test_data/modules/shared/concatenate_parquet/DNA/1/Lib2_DNA_L001_barcodes_mapping.parquet"),
+                    file("${projectDir}/test_data/modules/shared/concatenate_parquet/DNA/2/Lib2_DNA_L002_barcodes_mapping.parquet")
+                    ]
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            //assert snapshot(process.out).match()
+        }
+    }
+
+    test("CONCATENATE_PARQUET Simple sample, library_type RNA. Should run without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"                
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    [ sample_name: 'sample1', library_type: 'DNA' ],
+
+                    // read1_files
+                    [
+                    file("${projectDir}/test_data/modules/shared/concatenate_parquet/RNA/1/Lib1_RNA_L001_barcodes_mapping.parquet"),
+                    file("${projectDir}/test_data/modules/shared/concatenate_parquet/RNA/2/Lib1_RNA_L002_barcodes_mapping.parquet")
+                    ]
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            //assert snapshot(process.out).match()
+        }
+    }
+}
+

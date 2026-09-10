@@ -1,0 +1,2027 @@
+class TestUtils{
+    static void print_output_channels(def wf) {
+        println "\n=== OUTPUT CHANNELS ==="
+
+        println "rna_libraries (${wf.out.rna_libraries.size()} items):"
+        println wf.out.rna_libraries
+
+        println "\ndna_libraries (${wf.out.dna_libraries.size()} items):"
+        println wf.out.dna_libraries
+
+        println "\nper_sample_reads (${wf.out.per_sample_reads.size()} items):"
+        println wf.out.per_sample_reads
+
+        println "\nper_sample_barcode_mappings: (${wf.out.dna_libraries.size()} items):"
+        println wf.out.per_sample_barcode_mappings
+    }
+}
+
+nextflow_workflow {
+
+    name "Test Workflow DEMULTIPLEXING"
+    script "workflows/demultiplexing.nf"
+    workflow "DEMULTIPLEXING"
+
+
+    //tag-definition
+    tag "workflow"
+    tag "demultiplexing"
+    //Test ID -> RNAampDNA_Traceability_Matrix
+    tag "TEST-DEMULTIPLEXING"
+
+    // --- GLOBALE VARIABLES ---
+    def debug = false
+    def pathToInputCsv = "test_data/endToEnd"
+    // ---------- RNA ----------
+    // ----- LIBRARY_TYPE ------
+    def Lib1_RNA_L001 = "Lib1_RNA_L001"
+    def Lib1_RNA_L002 = "Lib1_RNA_L002"
+    def Lib3_RNA_L001 = "Lib3_RNA_L001"
+    def Lib3_RNA_L002 = "Lib3_RNA_L002"
+
+    // ---------- DNA ----------
+    // ----- LIBRARY_TYPE ------
+    def Lib2_DNA_L001 = "Lib2_DNA_L001"
+    def Lib2_DNA_L002 = "Lib2_DNA_L002"
+    def Lib4_DNA_L001 = "Lib4_DNA_L001"
+    def Lib4_DNA_L002 = "Lib4_DNA_L002"
+
+    // ---------------------------- PASS TESTCASES --------------------------
+
+    test("TEST-DEMULTIPLEXING_001: (PASS) S1_LT2: the output should be 2 files for DNA and 2 files for RNA") {
+
+        when {
+            params {
+                experiment_id = "test_demultiplex_pass"
+                load("${projectDir}/tests/params.json")
+            }
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L001}', 'DNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LT2.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+            assert rna.size() == 1          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+             
+            assert dna.size() == 1          // count libraries
+            assert dna.get(0).size() == 3   // 1 meta + 2 files
+            
+            assert barcode.size() == 2
+            assert barcode.get(0).size() == 2   // 2 files
+            assert barcode.get(1).size() == 2   // 2 files
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_002: (PASS) S1_LT2_demux: the output should be 2 files for DNA and 2 files for RNA") {
+  
+         when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L001}', 'DNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LT2_demux.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 1          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+             
+            assert dna.size() == 1          // count libraries
+            assert dna.get(0).size() == 3   // 1 meta + 2 files
+            
+            assert barcode.size() == 2
+            assert barcode.get(0).size() == 2   // 2 files
+            assert barcode.get(1).size() == 2   // 2 files
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_003: (PASS) S1_LT2_concat: the output should be 2 files for DNA and 2 files for RNA") {
+  
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L002}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L002}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib1_RNA_L002}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L002}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L002}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L002}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LT2_concat.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+                
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"                
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 1          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+             
+            assert dna.size() == 1          // count libraries
+            assert dna.get(0).size() == 3   // 1 meta + 2 files
+            
+            
+            assert barcode.size() == 2
+            assert barcode.get(0).size() == 2   // 2 files
+            assert barcode.get(1).size() == 2   // 2 files
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_004: (PASS) S1_LT2_concat_demux: the output should be 2 files for DNA and 2 files for RNA") {
+
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L002}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L002}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib1_RNA_L002}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L002}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L002}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L002}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LT2_concat_demux.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 1          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+             
+            assert dna.size() == 1          // count libraries
+            assert dna.get(0).size() == 3   // 1 meta + 2 files
+            
+            
+            assert barcode.size() == 2
+            assert barcode.get(0).size() == 2   // 2 files
+            assert barcode.get(1).size() == 2   // 2 files
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_005: (PASS) S1_LTDNA: the output should be 2 files for DNA") {
+    
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib2_DNA_L001}', 'DNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LTDNA.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 0          // count libraries
+             
+            assert dna.size() == 1          // count libraries
+            assert dna.get(0).size() == 3   // 1 meta + 2 files
+            
+            
+            assert barcode.size() == 1
+            assert barcode.get(0).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_006: (PASS) S1_LTDNA_concat: the output should be 2 files for DNA") {
+  
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L002}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib2_DNA_L001}', 'DNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L002}', 'DNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L002}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LTDNA_concat.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 0          // count libraries
+             
+            assert dna.size() == 1          // count libraries
+            assert dna.get(0).size() == 3   // 1 meta + 2 files
+            
+            assert barcode.size() == 1
+            assert barcode.get(0).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_007: (PASS) S1_LTDNA_concat_demux: the output should be 2 files for DNA") {
+ 
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L002}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib2_DNA_L001}', 'DNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L002}', 'DNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L002}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LTDNA_concat_demux.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 0          // count libraries
+             
+            assert dna.size() == 1          // count libraries
+            assert dna.get(0).size() == 3   // 1 meta + 2 files
+            
+            assert barcode.size() == 1
+            assert barcode.get(0).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_008: (PASS) S1_LTDNA_demux: the output should be 2 files for DNA") {
+  
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib2_DNA_L001}', 'DNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LTDNA_demux.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 0          // count libraries
+             
+            assert dna.size() == 1          // count libraries
+            assert dna.get(0).size() == 3   // 1 meta + 2 files
+            
+            
+            assert barcode.size() == 1
+            assert barcode.get(0).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_009: (PASS) S1_LTRNA: the output should be 2 files for RNA") {
+  
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LTRNA.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 1          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+
+            assert dna.size() == 0          // count libraries            
+            
+            
+            assert barcode.size() == 1
+            assert barcode.get(0).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_010: (PASS) S1_LTRNA_concat: the output should be 2 files for RNA") {
+ 
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L002}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib1_RNA_L002}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L002}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LTRNA_concat.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 1          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+
+            assert dna.size() == 0          // count libraries            
+            
+            assert barcode.size() == 1
+            assert barcode.get(0).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_011: (PASS) S1_LTRNA_concat_demux: the output should be 2 files for RNA") {
+  
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: 'Lib1_RNA_L002', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib1_RNA_L002}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L002}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LTRNA_concat_demux.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 1          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+
+            assert dna.size() == 0          // count libraries            
+            
+            assert barcode.size() == 1
+            assert barcode.get(0).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_012: (PASS) S1_LTRNA_demux: the output should be 2 files for RNA") {
+
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ]
+
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S1_LTRNA_demux.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 1          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+
+            assert dna.size() == 0          // count libraries            
+            
+            
+            assert barcode.size() == 1
+            assert barcode.get(0).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_013: (PASS) S2_LT2: the output should be 4 files for DNA and 4 files for RNA") {
+
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib3_RNA_L001}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib4_DNA_L001}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib3_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib3_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib4_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib4_DNA_L001}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S2_LT2.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 2          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+
+            assert dna.size() == 2          // count libraries            
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+            
+            
+            assert barcode.size() == 4
+            assert barcode.get(0).size() == 2   // 2 file
+            assert barcode.get(1).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_014: (PASS) S2_LT2_concat: the output should be 4 files for DNA and 4 files for RNA") {
+
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L002}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L002}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib3_RNA_L001}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib4_DNA_L001}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib3_RNA_L002}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib4_DNA_L002}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L002}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib1_RNA_L002}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L002}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L002}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L002}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib3_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib3_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib4_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib4_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib3_RNA_L002}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib3_RNA_L002}_barcodes.parquet"),
+
+                    ],
+                    [
+                        '${Lib4_DNA_L002}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib4_DNA_L002}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S2_LT2_concat.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 2          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+
+            assert dna.size() == 2          // count libraries            
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+            
+            
+            assert barcode.size() == 4
+            assert barcode.get(0).size() == 2   // 2 file
+            assert barcode.get(1).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_015: (PASS) S2_LT2_concat_demux: the output should be 4 files for DNA and 4 files for RNA") {
+
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L002}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L002}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib3_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib4_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib3_RNA_L002}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib4_DNA_L002}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L002}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib1_RNA_L002}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L002}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L002}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L002}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib3_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib3_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib4_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib4_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib3_RNA_L002}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib3_RNA_L002}_barcodes.parquet"),
+
+                    ],
+                    [
+                        '${Lib4_DNA_L002}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib4_DNA_L002}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S2_LT2_concat_demux.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 2          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+
+            assert dna.size() == 2          // count libraries            
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+            
+            
+            assert barcode.size() == 4
+            assert barcode.get(0).size() == 2   // 2 file
+            assert barcode.get(1).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_016: (PASS) S2_LT2_demux: the output should be 4 files for DNA and 4 files for RNA") {
+  
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib3_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib4_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib3_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib3_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib4_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib4_DNA_L001}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S2_LT2_demux.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 2          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+
+            assert dna.size() == 2          // count libraries            
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+            
+            
+            assert barcode.size() == 4
+            assert barcode.get(0).size() == 2   // 2 file
+            assert barcode.get(1).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_017: (PASS) S4_LT2_concat_demux: the output should be 8 files for DNA and 8 files for RNA") {
+  
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L002}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L002}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib3_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib4_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib3_RNA_L002}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib4_DNA_L002}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample3', library_id: '${Lib1_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample3', library_id: '${Lib2_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample3', library_id: '${Lib1_RNA_L002}', library_type: 'RNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample3', library_id: '${Lib2_DNA_L002}', library_type: 'DNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample4', library_id: '${Lib3_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample4', library_id: '${Lib4_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample4', library_id: '${Lib3_RNA_L002}', library_type: 'RNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L002}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample4', library_id: '${Lib4_DNA_L002}', library_type: 'DNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L002}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L002}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib1_RNA_L002}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L002}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L002}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L002}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib3_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib3_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib4_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib4_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib3_RNA_L002}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib3_RNA_L002}_barcodes.parquet"),
+
+                    ],
+                    [
+                        '${Lib4_DNA_L002}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib4_DNA_L002}_barcodes.parquet")
+                    ]
+
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S4_LT2_concat_demux.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 4          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+            
+            assert dna.size() == 4          // count libraries            
+            assert dna.get(0).size() == 3   // 1 meta + 2 files
+            
+            
+            assert barcode.size() == 8
+            assert barcode.get(0).size() == 2   // 2 file
+            assert barcode.get(1).size() == 2   // 2 file
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_018: (PASS) S4_LT2_demux: the output should be 8 files for DNA and 8 files for RNA") {
+        
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_pass"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib2_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib3_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample2', library_id: '${Lib4_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample3', library_id: '${Lib1_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample3', library_id: '${Lib2_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib2_DNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample4', library_id: '${Lib3_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib3_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample4', library_id: '${Lib4_DNA_L001}', library_type: 'DNA', demultiplexing_indices: 'B1;B2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib4_DNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib2_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib2_DNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib3_RNA_L001}', 'RNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib3_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib4_DNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib4_DNA_L001}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/pass/S4_LT2_demux.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/workflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 4          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+
+            assert dna.size() == 4          // count libraries            
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+            
+            
+            assert barcode.size() == 8
+            assert barcode.get(0).size() == 2   // 2 file
+            assert barcode.get(1).size() == 2   // 2 file
+        }
+    }
+
+    // --------------------- WARNING TESTCASES -------------------------
+   
+    test("TEST-DEMULTIPLEXING_019: (WARNING) same_fastqs_for_many_library_types: the output should be 1 file for DNA and 1 file for RNA") {
+        // TO DISCUSS
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_warning"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ],
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'DNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ],
+                    [
+                        '${Lib1_RNA_L001}', 'DNA', 
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/warning/same_fastqs_for_many_library_types.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/workflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 1          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+
+            assert dna.size() == 1          // count libraries            
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+            
+            assert barcode.size() == 2
+            assert barcode.get(0).size() == 2   // 2 file
+            assert barcode.get(1).size() == 2   // 2 file            
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_020: (WARNING) uneven_sample_types_libraries: the output should be 1 file for RNA and 0 files for DNA") {
+        // TO DISCUSS
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_warning"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA', demultiplexing_indices: 'A1;A2'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/warning/uneven_sample_types_libraries.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+            }
+
+            assert workflow.success
+
+            def rna = workflow.out.rna_libraries
+            def dna = workflow.out.dna_libraries
+            def barcode = workflow.out.per_sample_barcode_mappings
+
+            assert rna.size() == 1          // count libraries
+            assert rna.get(0).size() == 3   // 1 meta + 2 files
+
+            assert dna.size() == 0          // count libraries            
+            
+            
+            assert barcode.size() == 1
+            assert barcode.get(0).size() == 2   // 1 meta + 1 file
+        }
+    }
+
+    // --------------------- FAIL TESTCASES ----------------------------
+    test("TEST-DEMULTIPLEXING_021: (FAIL) missing_fastq1: the testcase should fail") {
+       // TO DISCUSS
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_fail"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                        
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/fail/missing_fastq1.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+                println "ERROR-REPORT: ${workflow.errorReport}"
+                println "\nSTDOUT: ${workflow.stdout}"
+                println "\nSTDERR: ${workflow.stderr}"
+            }
+
+            // ERROR ~ Invalid method invocation `call` with arguments: [[sample_name:sample1, library_id:Lib1_RNA_L001, library_type:RNA], 
+            // /atrandi-sequencing-general/datasets/internal/development_and_testing_datasets/uniflow/qa/alpha2_test/Lib1_RNA_L001_R2_001.fastq.gz] 
+            // (java.util.ArrayList) on _closure3 type
+            assert workflow.failed
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_022: (FAIL) missing_fastq2: the testcase should fail") {
+       // TO DISCUSS
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_fail"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: 'RNA'],
+                          file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/fail/missing_fastq2.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+                println "ERROR-REPORT: ${workflow.errorReport}"
+                println "\nSTDOUT: ${workflow.stdout}"
+                println "\nSTDERR: ${workflow.stderr}"
+            }
+
+            // ERROR ~ Invalid method invocation `call` with arguments: [[sample_name:sample1, library_id:Lib1_RNA_L001, library_type:RNA], 
+            // /atrandi-sequencing-general/datasets/internal/development_and_testing_datasets/uniflow/qa/alpha2_test/Lib1_RNA_L001_R2_001.fastq.gz] 
+            // (java.util.ArrayList) on _closure3 type
+            assert workflow.failed
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_023: (FAIL) missing_library_type:the testcase should fail") {
+       // TO DISCUSS
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_fail"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: 'sample1', library_id: '${Lib1_RNA_L001}', library_type: ''],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', '',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/fail/missing_library_type.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+                println "ERROR-REPORT: ${workflow.errorReport}"
+                println "\nSTDOUT: ${workflow.stdout}"
+                println "\nSTDERR: ${workflow.stderr}"
+            }
+
+            assert workflow.failed
+        }
+    }
+
+    test("TEST-DEMULTIPLEXING_024: (FAIL) missing_sample_name: the testcase should fail") {
+       // TO DISCUSS
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_demultiplex_fail"
+            }
+
+            workflow {
+                """
+                // samples_ch
+                input[0] = Channel.fromList([
+                    [
+                        [sample_name: '', library_id: '${Lib1_RNA_L001}', library_type: 'RNA'],
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R1_001.fastq.gz"),
+                        file("${params.imput_testdata}/qa/alpha2_test/${Lib1_RNA_L001}_R2_001.fastq.gz")
+                    ]
+                ])
+
+                // corrected_barcodes_ch
+                input[1] = Channel.fromList([  
+                    [
+                        '${Lib1_RNA_L001}', 'RNA',
+                        file("${params.imput_testdata}/qa/parquet_test/${Lib1_RNA_L001}_barcodes.parquet")
+                    ]
+                ])
+
+                // input_csv
+                input[2] = file("${projectDir}/${pathToInputCsv}/fail/missing_sample_name.csv")
+
+                // inputs_validated
+                input[3] = Channel.of(true)                     
+
+                // bc_long
+                input[4] = file("${projectDir}/assets/barcodes/B4_24_v01/long.csv")
+
+                // chemistry_json_path
+                input[5] = "${projectDir}/test_data/subworkflows/barcode/chemistry.json"
+                """
+            }
+        }
+
+        then {
+            if (debug) {
+                TestUtils.print_output_channels(workflow)
+                println "ERROR-REPORT: ${workflow.errorReport}"
+                println "\nSTDOUT: ${workflow.stdout}"
+                println "\nSTDERR: ${workflow.stderr}"
+            }
+
+            assert workflow.failed
+        }
+    }
+}

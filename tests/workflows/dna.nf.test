@@ -1,0 +1,52 @@
+nextflow_workflow {
+
+    name "Test Workflow DNA"
+    script "workflows/dna.nf"
+    workflow "DNA"
+
+    //tag-definition
+    tag "workflow"
+    tag "dna"
+    tag "slow"
+
+    test("The workflow dna_processing should run without failures") {
+        skip() //the test is not yet final. Runtime approx. 600s.
+        when {
+            params {
+                load("${projectDir}/tests/params.json")
+                experiment_id = "test_experiment_dna_pass"
+            }
+            workflow {
+                """
+                // dna_libraries 
+                input[0] = Channel.of([
+                    [ sample_name: 'sample1', library_type: 'DNA' ],
+                    
+                    // read_file_1
+                    file("${params.imput_testdata}/qa/alpha2_test/Lib2_DNA_L001_R1_001.fastq.gz"),
+                
+                    // read_file_2
+                    file("${params.imput_testdata}/qa/alpha2_test/Lib2_DNA_L001_R2_001.fastq.gz"),
+                ])
+
+                // amplicon_fasta_file_ch
+                input[1] = Channel.value(
+                    file("${params.imput_testdata}/qa/multiomics_amplicon_targets.fa")
+                )
+
+                // sample_barcode_mappings
+                input[2] = Channel.of(
+                    file("${projectDir}/test_data/workflows/dna/sample1_barcodes_mappings.parquet"),
+                    file("${params.imput_testdata}/qa/parquet_test/Lib2_DNA_L002_correct_barcode_reads.parquet")
+                )
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+}

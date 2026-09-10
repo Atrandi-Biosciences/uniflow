@@ -1,0 +1,110 @@
+nextflow_process {
+
+    name "Test Process BARCODE.QC_BARCODE"
+    script "modules/barcode.nf"
+    process "QC_BARCODE"
+
+    //tag-definition
+    tag "process"
+    tag "qc_barcode"
+
+    test("DNA qc_barcode should run without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"
+                library_type = "DNA"
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    
+                    // library_id
+                    "Lib2_DNA_L001",
+
+                    // library_type
+                    "DNA",
+
+                    // corrected_barcode_reads_parquet
+                    file("${projectDir}/test_data/modules/barcode/qc_barcode/DNA/Lib2_DNA_L002_corrected_barcode_reads.parquet"),
+                    
+                    // substitutions_parquet
+                    file("${projectDir}/test_data/modules/barcode/qc_barcode/DNA/Lib2_DNA_L002_substitutions.parquet"),
+
+                    // barcode_whitelist_path
+                    file("${projectDir}/test_data/modules/barcode/qc_barcode/DNA/long.csv"),
+
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def pngFiles = process.out.barcode_qc.get(0)[1] 
+    
+            assertAll(
+                { assert pngFiles.size() == 4 },
+                
+                // Checks if the files have the correct suffix
+                { assert pngFiles.every { file(it).name.endsWith(".png") } },
+
+                { assert pngFiles.every { file(it).exists() } }
+            )
+        }
+
+    }
+
+    test("RNA qc_barcode should run without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"
+                library_type = "RNA"
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    
+                    // library_id
+                    "Lib1_RNA_L001",
+
+                    // library_type
+                    "RNA",
+
+                    // corrected_barcode_reads_parquet
+                    file("${projectDir}/test_data/modules/barcode/qc_barcode/RNA/Lib1_RNA_L001_corrected_barcode_reads.parquet"),
+                    
+                    // substitutions_parquet
+                    file("${projectDir}/test_data/modules/barcode/qc_barcode/RNA/Lib1_RNA_L001_substitutions.parquet"),
+
+                    // barcode_whitelist_path
+                    file("${projectDir}/test_data/modules/barcode/qc_barcode/RNA/long.csv"),
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success         
+
+            def pngFiles = process.out.barcode_qc.get(0)[1] 
+    
+            assertAll(
+                { assert pngFiles.size() == 4 },
+                
+                // Checks if the files have the correct suffix
+                { assert pngFiles.every { file(it).name.endsWith(".png") } },
+
+                { assert pngFiles.every { file(it).exists() } }
+            )
+        }
+
+    }
+
+}

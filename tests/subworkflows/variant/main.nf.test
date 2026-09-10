@@ -1,0 +1,65 @@
+nextflow_workflow {
+
+    name "Test Workflow VARIANT"
+    script "subworkflows/variant/main.nf"
+    workflow "VARIANT"
+
+    //tag-definition
+    tag "subworkflow"
+    tag "variant"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                experiment_id = "test_variant"
+                load("${projectDir}/tests/params.json")
+            }
+            workflow {
+                """
+                // variant_calling_entry
+                input[0] = Channel.of([
+                    [ sample_name: 'sample1'],
+                    file("${params.imput_testdata}/qa/variant_calling_beta/regression-tests-input/aligned.sorted.bam"),
+                    file("${params.imput_testdata}/qa/variant_calling_beta/regression-tests-input/aligned.sorted.bam.bai")
+                ])
+
+                // amplicon_fasta_file_ch
+                input[1] = Channel.value(
+                    file("${params.imput_testdata}/qa/variant_calling_beta/amplicon_ref/intergenic_amplicon_50.fasta")
+                )
+
+                // sample_barcode_mappings
+                input[2] = Channel.of(
+                    file("${projectDir}/test_data/subworkflows/variant/sample1_barcode_mappings.parquet")
+                )
+
+                // filtered_amplicon_reads
+                input[3] = Channel.of(
+                    file("${projectDir}/test_data/subworkflows/variant/filtered_amplicon_reads.parquet")
+                )
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            def vcfPaths = workflow.out.out
+                .findAll { tuple -> tuple.get(1).toString().endsWith('.vcf.gz') }
+                .collect { tuple -> path(tuple.get(1)) }
+
+            assert snapshot(
+                vcfPaths.collect { vcfPath ->
+                    [
+                        chromosomes: vcfPath.vcf.chromosomes,
+                        variantCount: vcfPath.vcf.variantCount,
+                        sampleCount: vcfPath.vcf.sampleCount
+                    ]
+                }
+            ).match("multiple_vcf_summaries")
+        }
+
+    }
+
+}

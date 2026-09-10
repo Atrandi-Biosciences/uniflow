@@ -1,0 +1,7 @@
+a	b	only_a	only_b	shared	jaccard
+lofreq_100000t	lofreq_100000t_250000d	26	8	597	0.9461
+lofreq_100000t	lofreq_100000t_minbq10_minmq50	190	1302	433	0.2249
+lofreq_100000t	lofreq_10000t_minbq10_minmq50	190	1302	433	0.2249
+lofreq_100000t_250000d	lofreq_100000t_minbq10_minmq50	185	1315	420	0.2188
+lofreq_100000t_250000d	lofreq_10000t_minbq10_minmq50	185	1315	420	0.2188
+lofreq_100000t_minbq10_minmq50	lofreq_10000t_minbq10_minmq50	0	0	1735	1.0000

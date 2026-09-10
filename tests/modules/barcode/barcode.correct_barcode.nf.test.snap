@@ -1,0 +1,108 @@
+{
+    "Checking for correct barcodes for the library type DNA should run without failures": {
+        "content": [
+            {
+                "0": [
+                    [
+                        "Lib2_DNA_L001",
+                        "DNA",
+                        "Lib2_DNA_L001_corrected_barcode_reads.parquet:md5,de7918d1b77515942da1956ab65bbb26",
+                        "Lib2_DNA_L001_substitutions.parquet:md5,56e3b15481c49d90fe227a691e8b0146"
+                    ]
+                ],
+                "1": [
+                    [
+                        "Lib2_DNA_L001",
+                        "DNA",
+                        "Lib2_DNA_L001_barcodes_mapping.parquet:md5,f110dbcc97be9ffe50c38168015f4277"
+                    ]
+                ],
+                "2": [
+                    [
+                        "Lib2_DNA_L001",
+                        "metrics.parquet:md5,070f403e4c5f03e2033f4cbf714c1f1f"
+                    ]
+                ],
+                "barcode_mapping": [
+                    [
+                        "Lib2_DNA_L001",
+                        "DNA",
+                        "Lib2_DNA_L001_barcodes_mapping.parquet:md5,f110dbcc97be9ffe50c38168015f4277"
+                    ]
+                ],
+                "corrected_barcodes": [
+                    [
+                        "Lib2_DNA_L001",
+                        "DNA",
+                        "Lib2_DNA_L001_corrected_barcode_reads.parquet:md5,de7918d1b77515942da1956ab65bbb26",
+                        "Lib2_DNA_L001_substitutions.parquet:md5,56e3b15481c49d90fe227a691e8b0146"
+                    ]
+                ],
+                "metrics_parquet": [
+                    [
+                        "Lib2_DNA_L001",
+                        "metrics.parquet:md5,070f403e4c5f03e2033f4cbf714c1f1f"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-07T12:15:56.072740715",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.04.8"
+        }
+    },
+    "Checking for correct barcodes for the library type RNA should run without failures": {
+        "content": [
+            {
+                "0": [
+                    [
+                        "Lib1_RNA_L001",
+                        "RNA",
+                        "Lib1_RNA_L001_corrected_barcode_reads.parquet:md5,dce9466fa41086b37bfad3511a39decc",
+                        "Lib1_RNA_L001_substitutions.parquet:md5,56e3b15481c49d90fe227a691e8b0146"
+                    ]
+                ],
+                "1": [
+                    [
+                        "Lib1_RNA_L001",
+                        "RNA",
+                        "Lib1_RNA_L001_barcodes_mapping.parquet:md5,9688e96fc27ed4127189c0835e4422cc"
+                    ]
+                ],
+                "2": [
+                    [
+                        "Lib1_RNA_L001",
+                        "metrics.parquet:md5,44c9d41ce3d47b4e446384b2027ed415"
+                    ]
+                ],
+                "barcode_mapping": [
+                    [
+                        "Lib1_RNA_L001",
+                        "RNA",
+                        "Lib1_RNA_L001_barcodes_mapping.parquet:md5,9688e96fc27ed4127189c0835e4422cc"
+                    ]
+                ],
+                "corrected_barcodes": [
+                    [
+                        "Lib1_RNA_L001",
+                        "RNA",
+                        "Lib1_RNA_L001_corrected_barcode_reads.parquet:md5,dce9466fa41086b37bfad3511a39decc",
+                        "Lib1_RNA_L001_substitutions.parquet:md5,56e3b15481c49d90fe227a691e8b0146"
+                    ]
+                ],
+                "metrics_parquet": [
+                    [
+                        "Lib1_RNA_L001",
+                        "metrics.parquet:md5,44c9d41ce3d47b4e446384b2027ed415"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-09-07T12:15:50.158182163",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.04.8"
+        }
+    }
+}

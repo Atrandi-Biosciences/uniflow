@@ -1,0 +1,118 @@
+%%metro title: uniflow
+%%metro style: light
+%%metro line: rna       | RNA               | #e63946
+%%metro line: dna       | DNA               | #0570b0
+%%metro legend: left
+
+%%metro file: fastq_in     | FASTQ
+%%metro file: samplesheet  | CSV
+%%metro file: h5ad_out     | H5AD
+%%metro file: report_final | HTML
+
+graph LR
+    subgraph demux [Demultiplexing]
+        %%metro direction: LR
+        fastq_in[ ]
+        samplesheet[ ]
+        falco[FALCO]
+        barcode[Barcode extract + correct]
+        split[Per-sample split + QC]
+
+        fastq_in    -->|rna,dna| falco
+        fastq_in    -->|rna,dna| barcode
+        samplesheet -->|rna,dna| barcode
+        barcode     -->|rna,dna| split
+    end
+
+    subgraph rna_proc [RNA Processing]
+        %%metro direction: LR
+        %%metro exit: right | rna
+        trim[Trim reads]
+        rna_align[STARsolo align]
+        rna_merge[Per-cell merge]
+        rna_filter[Filter cells]
+        rna_saturation[Saturation curves]
+
+        trim       -->|rna| rna_align
+        rna_align  -->|rna| rna_merge
+        rna_merge  -->|rna| rna_filter
+        rna_filter -->|rna| rna_saturation
+    end
+
+    subgraph dna_proc [DNA Processing]
+        %%metro direction: LR
+        dna_align[minimap2]
+        dna_merge[Per-cell merge]
+        dna_count[Count amplicons]
+        dna_cells[Filter cells]
+        dna_qc[Amplicon QC]
+        dna_downsample[Downsample per-cell/amplicon]
+        _dna_processing_hub[hidden]
+
+        dna_align      -->|dna| dna_merge
+        dna_merge      -->|dna| dna_count
+        dna_count      -->|dna| dna_cells
+        dna_count      -->|dna| dna_qc
+        dna_cells      -->|dna| dna_downsample
+        dna_qc         -->|dna| dna_downsample
+        dna_downsample -->|dna| _dna_processing_hub
+    end
+
+    subgraph variant_calling [Variant Calling]
+        %%metro direction: LR
+        %%metro exit: right | dna
+        HaplotypeCaller[GATK HaplotypeCaller]
+        bcftools[bcftools]
+        freebayes[freebayes]
+        VarDict[VarDict]
+        bcftools_norm[bcftools norm]
+        bcftools_stats[Variant stats]
+        harmonize[Harmonize VCFs]
+        bcftools_merge[Merge variants]
+        compare[Joint Call stats]
+        per_cell[Per-cell variant calling]
+
+        HaplotypeCaller -->|dna| bcftools_norm
+        bcftools        -->|dna| bcftools_norm
+        freebayes       -->|dna| bcftools_norm
+        VarDict         -->|dna| bcftools_norm
+
+        bcftools_norm  -->|dna| bcftools_stats
+        bcftools_norm  -->|dna| harmonize
+
+        bcftools_stats -->|dna| bcftools_merge
+        harmonize      -->|dna| bcftools_merge
+
+        bcftools_merge -->|dna| per_cell
+        bcftools_merge -->|dna| compare
+    end
+    
+    subgraph reporting [Reporting]
+        %%metro entry: left | rna, dna
+        %%metro direction: LR
+        _reporting_hub[hidden]
+        aggregate_metric[Aggregate metrics]
+        merge_h5ad[Merge H5AD]
+        multiqc[MultiQC report]
+        h5ad_out[ ]
+        report_final[ ]
+
+        _reporting_hub   -->|rna,dna| aggregate_metric
+        _reporting_hub   -->|rna,dna| merge_h5ad
+        aggregate_metric -->|rna,dna| multiqc
+        multiqc          -->|rna,dna| report_final
+        merge_h5ad       -->|rna,dna| h5ad_out
+    end
+
+    %% Inter-section edges
+    split              -->|rna| trim
+    split              -->|dna| dna_align
+    _dna_processing_hub -->|dna| HaplotypeCaller
+    _dna_processing_hub -->|dna| bcftools
+    _dna_processing_hub -->|dna| freebayes
+    _dna_processing_hub -->|dna| VarDict
+    rna_saturation     -->|rna| _reporting_hub
+    compare            -->|dna| _reporting_hub
+    per_cell           -->|dna| _reporting_hub
+    
+    

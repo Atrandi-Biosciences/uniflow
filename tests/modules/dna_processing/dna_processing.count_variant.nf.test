@@ -1,0 +1,58 @@
+nextflow_process {
+
+    name "Test Process DNA_PROCESSING.COUNT_VARIANT"
+    script "modules/dna_processing.nf"
+    process "COUNT_VARIANT"
+
+    //tag-definition
+    tag "process"
+    tag "process-dna_processing"
+    tag "count_variant"
+
+    test("Should run without failures") {
+        skip() //the process is not currently used in the pipeline.
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                [
+                    sample_name: 'sample1'
+                ],
+
+                // bam
+                file("${projectDir}/test_data/modules/dna_processing/count_variant/aligned.sorted.bam"),
+
+                // barcode_parquet
+                file("${projectDir}/test_data/modules/dna_processing/count_variant/sample1_DNA_barcode_mappings.parquet"),
+
+                // reference_fasta
+                file("${projectDir}/test_data/modules/dna_processing/count_variant/test_ref.fasta"),
+
+                // calls
+                file("${projectDir}/test_data/modules/dna_processing/count_variant/sample1_snps.csv"),
+
+                // index
+                file("${projectDir}/test_data/modules/dna_processing/count_variant/aligned.sorted.bam.bai"),
+
+                // filtered_amplicon_reads
+                file("${projectDir}/test_data/modules/dna_processing/count_variant/filtered_amplicon_reads.parquet"),
+
+                // anchors_parquet
+                file("${projectDir}/test_data/modules/dna_processing/count_variant/anchors.parquet")
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+        }
+
+    }
+
+}

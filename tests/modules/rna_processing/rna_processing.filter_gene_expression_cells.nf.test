@@ -1,0 +1,39 @@
+nextflow_process {
+
+    name "Test Process RNA_PROCESSING.FILTER_GENE_EXPRESSION_CELLS"
+    script "modules/rna_processing.nf"
+    process "FILTER_GENE_EXPRESSION_CELLS"
+
+    //tag-definition
+    tag "process"
+    tag "process-rna_processing"
+    tag "filter_gene_expression_cells"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    [
+                        sample_name: 'sample1', 
+                        force_cells: 'null'
+                    ],
+                    file("${projectDir}/test_data/modules/rna_processing/filter_gene_expression_cells/full_read_RNA.parquet"),
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+        }
+
+    }
+
+}

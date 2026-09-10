@@ -1,0 +1,43 @@
+nextflow_process {
+
+    name "Test Process DNA_PROCESSING.FILTER_AMPLICON_CELLS"
+    script "modules/dna_processing.nf"
+    process "FILTER_AMPLICON_CELLS"
+
+    //tag-definition
+    tag "process"
+    tag "process-dna_processing"
+    tag "filter_amplicon_cells"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                [
+                    sample_name: 'sample1'
+                ],
+
+                // filtered_reads_parquet
+                file("${projectDir}/test_data/modules/dna_processing/filter_amplicon_cells/filtered_amplicon_counts.parquet"),
+
+                // full_read_parquet
+                file("${projectDir}/test_data/modules/dna_processing/filter_amplicon_cells/full_read_DNA.parquet")
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+        }
+
+    }
+
+}

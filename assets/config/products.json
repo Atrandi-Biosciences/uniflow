@@ -1,0 +1,66 @@
+{
+    "B4_24_v1": {
+        "chemistry_id": "B4-24_v1",
+        "barcode_num": 24,
+        "barcode_correction": true,
+        "umi_correction": true,
+        "handle_correction": true,
+        "counts_format": [
+            "h5ad"
+        ],
+        "modalities": [
+            "gene_expression",
+            "amplicon",
+            "cross_processing",
+            "variant"
+        ]
+    },
+    "B4_96_v1": {
+        "chemistry_id": "B4-96_v1",
+        "barcode_num": 96,
+        "barcode_correction": true,
+        "umi_correction": true,
+        "handle_correction": true,
+        "counts_format": [
+            "h5ad",
+            "zarr"
+        ],
+        "modalities": [
+            "gene_expression",
+            "cross_processing",
+            "amplicon",
+            "variant"
+        ]
+    },
+    "B4_24_v1-no-var": {
+        "chemistry_id": "B4-24_v1",
+        "barcode_num": 24,
+        "barcode_correction": true,
+        "umi_correction": true,
+        "handle_correction": true,
+        "counts_format": [
+            "h5ad"
+        ],
+        "modalities": [
+            "gene_expression",
+            "amplicon",
+            "cross_processing"
+        ]
+    },
+    "B4_96_v1-no-var": {
+        "chemistry_id": "B4-96_v1",
+        "barcode_num": 96,
+        "barcode_correction": true,
+        "umi_correction": true,
+        "handle_correction": true,
+        "counts_format": [
+            "h5ad",
+            "zarr"
+        ],
+        "modalities": [
+            "gene_expression",
+            "cross_processing",
+            "amplicon"
+        ]
+    }
+}

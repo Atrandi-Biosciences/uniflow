@@ -1,0 +1,91 @@
+{
+    "Should run without failures": {
+        "content": [
+            {
+                "0": [
+                    [
+                        {
+                            "sample_name": "sample1",
+                            "library_type": "DNA"
+                        },
+                        "sample1.variants.parquet:md5,779cd59e141420637f143456c09529ff"
+                    ]
+                ],
+                "1": [
+                    
+                ],
+                "2": [
+                    
+                ],
+                "3": [
+                    
+                ],
+                "4": [
+                    
+                ],
+                "5": [
+                    
+                ],
+                "6": [
+                    
+                ],
+                "7": [
+                    
+                ],
+                "8": [
+                    
+                ],
+                "9": [
+                    
+                ],
+                "10": [
+                    
+                ],
+                "counts_parquet": [
+                    
+                ],
+                "h5ad": [
+                    
+                ],
+                "indel_counts_parquet": [
+                    
+                ],
+                "indel_h5ad": [
+                    
+                ],
+                "indel_parquet": [
+                    
+                ],
+                "indel_raw_parquet": [
+                    
+                ],
+                "power_report": [
+                    
+                ],
+                "power_table": [
+                    
+                ],
+                "raw_parquet": [
+                    
+                ],
+                "snv_parquet": [
+                    
+                ],
+                "variants_catalog_parquet": [
+                    [
+                        {
+                            "sample_name": "sample1",
+                            "library_type": "DNA"
+                        },
+                        "sample1.variants.parquet:md5,779cd59e141420637f143456c09529ff"
+                    ]
+                ]
+            }
+        ],
+        "timestamp": "2026-08-19T08:49:28.746373068",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

@@ -1,0 +1,42 @@
+Variant caller run comparison
+ref       : intergenic_amplicon_50.fasta
+n_runs    : 4
+labels    : lofreq_100000t lofreq_100000t_250000d lofreq_100000t_minbq10_minmq50 lofreq_10000t_minbq10_minmq50
+
+## sites per run
+label	sites
+lofreq_100000t	623
+lofreq_100000t_250000d	605
+lofreq_100000t_minbq10_minmq50	1735
+lofreq_10000t_minbq10_minmq50	1735
+
+## N-way core (sites called by all 4 runs): 413
+
+## pairwise Jaccard
+a	b	only_a	only_b	shared	jaccard
+lofreq_100000t	lofreq_100000t_250000d	26	8	597	0.9461
+lofreq_100000t	lofreq_100000t_minbq10_minmq50	190	1302	433	0.2249
+lofreq_100000t	lofreq_10000t_minbq10_minmq50	190	1302	433	0.2249
+lofreq_100000t_250000d	lofreq_100000t_minbq10_minmq50	185	1315	420	0.2188
+lofreq_100000t_250000d	lofreq_10000t_minbq10_minmq50	185	1315	420	0.2188
+lofreq_100000t_minbq10_minmq50	lofreq_10000t_minbq10_minmq50	0	0	1735	1.0000
+
+## per-run private (called by exactly 1 run)
+  lofreq_100000t                 6
+  lofreq_100000t_250000d         1
+  lofreq_100000t_minbq10_minmq50 0
+  lofreq_10000t_minbq10_minmq50  0
+
+## VAF concordance on core set
+a	b	n	median_abs_dAF	max_abs_dAF	pearson_r
+lofreq_100000t	lofreq_100000t_250000d	413	0.00000	0.22339	0.9982
+lofreq_100000t	lofreq_100000t_minbq10_minmq50	413	0.00782	0.23527	0.9938
+lofreq_100000t	lofreq_10000t_minbq10_minmq50	413	0.00782	0.23527	0.9938
+lofreq_100000t_250000d	lofreq_100000t_minbq10_minmq50	413	0.00852	0.23527	0.9924
+lofreq_100000t_250000d	lofreq_10000t_minbq10_minmq50	413	0.00852	0.23527	0.9924
+lofreq_100000t_minbq10_minmq50	lofreq_10000t_minbq10_minmq50	413	0.00000	0.00000	1.0000
+
+Acceptance heuristics (self-consistency only, not a truth comparison):
+  pairwise Jaccard  >= 0.99
+  median |dAF|      <  0.005
+  max    |dAF|      <  0.02

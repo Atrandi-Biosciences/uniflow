@@ -1,0 +1,5 @@
+sample_name,fastq_1,fastq_2,library_type,demultiplexing_indices,expected_cells,run_variant_calling
+S1_DNA,/tmp/S1_L001_R1_001.fastq.gz,/tmp/S1_L001_R2_001.fastq.gz,DNA,A1;B1;C1;D1,1000,true
+S2_DNA,/tmp/S2_L001_R1_001.fastq.gz,/tmp/S2_L001_R2_001.fastq.gz,DNA,A2;B2;C2;D2,1000,false
+S3_DNA,/tmp/S3_L001_R1_001.fastq.gz,/tmp/S3_L001_R2_001.fastq.gz,DNA,A3;B3;C3;D3,1000,
+S4_RNA,/tmp/S4_L001_R1_001.fastq.gz,/tmp/S4_L001_R2_001.fastq.gz,RNA,A4;B4;C4;D4,1000,

@@ -1,0 +1,68 @@
+nextflow_process {
+
+    name "Test Process SHARED.MERGE_READS"
+    script "modules/shared.nf"
+    process "MERGE_READS"
+
+    //tag-definition
+    tag "process"
+    tag "shared"
+    tag "merge_reads"
+
+    test("Should merge RNA reads without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"                
+            }
+            process {
+                """                
+                input[0] = Channel.of([
+                [
+                    sample_name: 'sample1', 
+                    library_type: 'RNA'
+                ],
+                file("${projectDir}/test_data/modules/shared/merge_reads/RNA/RNA_bam.parquet"),
+                file("${projectDir}/test_data/modules/shared/merge_reads/RNA/sample1_RNA_barcode_mappings.parquet")
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+        }
+
+    }
+
+    test("Should merge DNA reads without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"                
+            }
+            process {
+                """                
+                input[0] = Channel.of([
+                [
+                    sample_name: 'sample1', 
+                    library_type: 'DNA'
+                ],
+                file("${projectDir}/test_data/modules/shared/merge_reads/DNA/DNA_bam.parquet"),
+                file("${projectDir}/test_data/modules/shared/merge_reads/DNA/sample1_DNA_barcode_mappings.parquet")
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+        }
+
+    }
+
+}

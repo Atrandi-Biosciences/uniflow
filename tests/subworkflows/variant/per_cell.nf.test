@@ -1,0 +1,60 @@
+nextflow_workflow {
+
+    name "Test Workflow PER_CELL_VARIANTS"
+    script "subworkflows/variant/per_cell.nf"
+    workflow "PER_CELL_VARIANTS"
+
+    //tag-definition
+    tag "subworkflow"
+    tag "per_cell_variants"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                experiment_id = "test_variant_merging"
+                load("${projectDir}/tests/params.json")
+            }
+            workflow {
+                """
+                // consensus_vcf
+                input[0] = Channel.of([
+                    [ sample_name: 'sample1', library_type: 'DNA' ],
+                    file("${projectDir}/test_data/subworkflows/variant/per_cell/sample1.consensus.vcf.gz")
+                ])
+
+                // bam_with_index
+                input[1] = Channel.of([
+                    [ sample_name: 'sample1', library_type: 'DNA' ],
+                    file("${params.imput_testdata}/qa/variant_calling_beta/regression-tests-input/aligned.sorted.bam"),
+                    file("${params.imput_testdata}/qa/variant_calling_beta/regression-tests-input/aligned.sorted.bam.bai")
+                ])
+
+                // sample_barcode_mapping
+                input[2] = Channel.value(
+                    file("${projectDir}/test_data/subworkflows/variant/per_cell/sample1_DNA_barcode_mappings.parquet")
+                )
+
+                // filtered_amplicon_reads
+                input[3] = Channel.of(
+                    [
+                        file("${projectDir}/test_data/subworkflows/variant/filtered_amplicon_reads.parquet")
+                    ]
+                )
+
+                // amplicon_fasta
+                input[4] = Channel.value(
+                    file("${params.imput_testdata}/qa/variant_calling_beta/amplicon_ref/intergenic_amplicon_50.fasta")
+                )
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert snapshot(workflow.out).match()
+        }
+
+    }
+
+}

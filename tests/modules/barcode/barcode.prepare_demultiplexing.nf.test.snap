@@ -1,0 +1,25 @@
+{
+    "Prepare demultiplexging should run without failures": {
+        "content": [
+            {
+                "0": [
+                    "sample_demultiplexing_sheet.csv:md5,79b01c003cf08d82020aff8be21b260f"
+                ],
+                "1": [
+                    "sample_sheet.csv:md5,b1bc94c6d8b64940f5efee7b9b0639b0"
+                ],
+                "demultiplexing_csv": [
+                    "sample_demultiplexing_sheet.csv:md5,79b01c003cf08d82020aff8be21b260f"
+                ],
+                "sample_sheet_csv": [
+                    "sample_sheet.csv:md5,b1bc94c6d8b64940f5efee7b9b0639b0"
+                ]
+            }
+        ],
+        "timestamp": "2026-06-08T10:47:20.892648952",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

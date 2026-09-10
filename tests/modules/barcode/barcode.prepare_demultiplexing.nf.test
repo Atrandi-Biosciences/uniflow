@@ -1,0 +1,120 @@
+nextflow_process {
+
+    name "Test Process BARCODE.PREPARE_DEMULTIPLEXING"
+    script "modules/barcode.nf"
+    process "PREPARE_DEMULTIPLEXING"
+
+    //tag-definition
+    tag "process"
+    tag "prepare_demultiplexing"
+
+    test("Prepare demultiplexging should run without failures") {
+
+        when {
+            params {
+                // define parameters here. Example:
+                // outdir = "tests/results"
+                experiment_id = "test_experiment"
+                debug = false
+            }
+            process {
+                """
+                // samplesheet_csv
+                input[0] = file("${projectDir}/test_data/modules/barcode/prepare_demultiplexing/mixed.csv")
+
+                // barcode_whitelist_path
+                input[1] = file("${projectDir}/test_data/modules/barcode/prepare_demultiplexing/long.csv")
+                
+                // validation_done
+                input[2] = true
+                """
+            }
+        }
+
+        then {
+            // outpu-files
+            
+            def demultiplexing_csv = process.out.demultiplexing_csv.get(0)
+            def sample_sheet_csv = process.out.sample_sheet_csv.get(0)
+
+            def demuliplexingLines = file(demultiplexing_csv).readLines()
+
+            if (params.debug) {
+                // DEBUG: Shows you what is actually in the file.
+                println "\n--- CSV CONTENT START ---"
+                println demuliplexingLines
+                println "--- CSV CONTENT END ---\n"
+            }
+
+            // get the first data_line
+            // values to: barcode_position,barcode,sample_name,fastq_1,fastq_2,library_type,library_id,demultiplexing_indices
+            def firstDemultiplexingDataLine = demuliplexingLines.get(1).split(",", -1)  //(-1) `split` removes the last field if it is empty. With `-1`, `split` removes all fields.
+            def secondDemultiplexingDataLine = demuliplexingLines.get(2).split(",", -1)
+
+            if (params.debug) {
+                // DEBUG: Shows you the first data line.
+                println "\n--- CSV FIRST DATA LINE START ---"
+                print firstDemultiplexingDataLine[0] + ","
+                print firstDemultiplexingDataLine[1] + ","
+                print firstDemultiplexingDataLine[2] + ","
+                print firstDemultiplexingDataLine[3] + ","
+                print firstDemultiplexingDataLine[4] + ","
+                print firstDemultiplexingDataLine[5] + ","
+                print firstDemultiplexingDataLine[6] + ","
+                print firstDemultiplexingDataLine[7]
+                println "--- CSV FIRST DATA LINE END ---\n"
+            }
+
+            assert process.success
+
+            // Snapshot of all outputs from a process
+            assert snapshot(process.out).match()
+     
+            assertAll(
+                { assert file(demultiplexing_csv).exists() },
+                { assert file(demultiplexing_csv).name.endsWith(".csv") },           
+                
+                //first line
+                // barcode_position
+                { assert firstDemultiplexingDataLine[0] == "" },
+                // barcodes
+                { assert firstDemultiplexingDataLine[1] == "" },
+                // sample_name
+                { assert firstDemultiplexingDataLine[2] == "sample1" },
+                // fastq_1
+                { assert firstDemultiplexingDataLine[3] == "projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib1_RNA_L001_R1_001.fastq.gz" },
+                // fastq_2
+                { assert firstDemultiplexingDataLine[4] == "projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib1_RNA_L001_R2_001.fastq.gz" },
+                // library_type
+                { assert firstDemultiplexingDataLine[5] == "RNA" },
+                // library_id
+                { assert firstDemultiplexingDataLine[6] == "Lib1_RNA_L001" },
+                // demultiplexing_indices
+                { assert firstDemultiplexingDataLine[7] == "" },
+
+                //second line
+                // barcode_position
+                { assert secondDemultiplexingDataLine[0] == "" },
+                // barcode
+                { assert secondDemultiplexingDataLine[1] == "" },
+                // sample_name
+                { assert secondDemultiplexingDataLine[2] == "sample1" },
+                // fastq_1
+                { assert secondDemultiplexingDataLine[3] == "projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib2_DNA_L001_R1_001.fastq.gz" },
+                // fastq_2
+                { assert secondDemultiplexingDataLine[4] == "projectDir/data/raw/alpha2_example_full/subsample_directed/fixed/test1/Lib2_DNA_L001_R2_001.fastq.gz" },
+                // library_type
+                { assert secondDemultiplexingDataLine[5] == "DNA" },
+                // library_id
+                { assert secondDemultiplexingDataLine[6] == "Lib2_DNA_L001" },
+                // demultiplexing_indices
+                { assert secondDemultiplexingDataLine[7] == "" },
+
+                { assert file(sample_sheet_csv).exists() },
+                { assert file(sample_sheet_csv).name.endsWith(".csv") }
+            )
+        }        
+
+    }
+
+}

@@ -1,0 +1,104 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.org/chemistry.schema.json",
+    "title": "Chemistry Specification",
+    "type": "object",
+    "patternProperties": {
+        "^[A-Za-z0-9-]+_v[0-9]{1,2}$": {
+            "$ref": "#/$defs/chemistry"
+        }
+    },
+    "additionalProperties": false,
+    "$defs": {
+        "chemistry": {
+            "type": "object",
+            "required": [
+                "description",
+                "structure"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "structure": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "additionalProperties": {
+                        "$ref": "#/$defs/readStructure"
+                    }
+                },
+                "references": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/$defs/reference"
+                    }
+                },
+                "demultiplexing": {
+                    "$ref": "#/$defs/demultiplexing"
+                }
+            },
+            "additionalProperties": false
+        },
+        "readStructure": {
+            "type": "object",
+            "required": [
+                "offset",
+                "pattern",
+                "mappings"
+            ],
+            "properties": {
+                "offset": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "pattern": {
+                    "type": "string",
+                    "pattern": "^[A-Z]+$"
+                },
+                "mappings": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "additionalProperties": {
+                        "$ref": "#/$defs/mappingGroup"
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "mappingGroup": {
+            "type": "object",
+            "minProperties": 1,
+            "patternProperties": {
+                "^[A-Z]$": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "reference": {
+            "type": "object",
+            "required": [
+                "path"
+            ],
+            "properties": {
+                "path": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "demultiplexing": {
+            "type": "object",
+            "required": [
+                "parts"
+            ],
+            "properties": {
+                "parts": {
+                    "type": "string",
+                    "pattern": "^[A-Z]+$"
+                }
+            },
+            "additionalProperties": false
+        }
+    }
+}
