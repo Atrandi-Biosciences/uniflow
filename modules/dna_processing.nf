@@ -144,8 +144,8 @@ process DETECTION_POWER {
     tuple val(meta), path(variants_count_parquet)
 
     output:
-    tuple val(meta), path("*_detection_power.txt"), emit: report
-    tuple val(meta), path("*_detection_power.csv"), emit: table
+    tuple val(meta), path("*_experimental_detection_power.txt"), emit: report
+    tuple val(meta), path("*_experimental_detection_power.csv"), emit: table
 
     script:
     // Genotype-likelihood + bulk-floor values come from conf/variant.config, so
@@ -157,8 +157,8 @@ process DETECTION_POWER {
 
     stub:
     """
-    touch ${meta.sample_name}_detection_power.txt
-    touch ${meta.sample_name}_detection_power.csv
+    touch ${meta.sample_name}_experimental_detection_power.txt
+    touch ${meta.sample_name}_experimental_detection_power.csv
     """
 }
 

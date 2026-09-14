@@ -230,7 +230,7 @@ workflow {
 
 
     ch_multiqc_files = ch_multiqc_files.mix(
-        DNA.out.metrics.map { _meta, _modality, it -> it.flatten() }
+        DNA.out.metrics.mix(DNA.out.internal_metrics).map { _meta, _modality, it -> it.flatten() }
     )
 
     // Every task of a process produces an identical versions.yml, so dedup on content
@@ -318,6 +318,7 @@ workflow {
     internal_metrics     = channel.empty().mix(RNA.out.internal_metrics).mix(DNA.out.internal_metrics)
     qc                   = channel.empty().mix(RNA.out.qc).mix(DNA.out.qc)
     dev                  = channel.empty().mix(RNA.out.dev).mix(DNA.out.dev)
+    internal_dev         = DNA.out.internal_dev
     rna_out              = RNA.out.out
     dna_out              = DNA.out.out
     multiqc_report       = EXPERIMENT.out.report
@@ -373,6 +374,10 @@ output {
         path { meta, modality, plots -> "samples/${meta.sample_name}/qc/${modality}/" }
     }
     dev {
+        path { meta, modality, files -> "samples/${meta.sample_name}/dev/${modality}/" }
+    }
+    internal_dev {
+        enabled params.internal
         path { meta, modality, files -> "samples/${meta.sample_name}/dev/${modality}/" }
     }
     dna_out {

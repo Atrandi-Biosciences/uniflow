@@ -1,4 +1,0 @@
-.gitattributes export-ignore
-bitbucket-pipelines.yml export-ignore
-.gitignore export-ignore
-tests/params.json export-ignore

@@ -27,5 +27,5 @@ type = "bitbucket"
 env = "BITBUCKET_TOKEN"
 
 [tool.semantic_release.changelog.default_templates]
-changelog_file = "CHANGELOG.md"
+changelog_file = "INT_CHANGELOG.md"
 output_format = "md"

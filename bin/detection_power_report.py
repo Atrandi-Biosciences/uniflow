@@ -3,6 +3,10 @@
 
 Note: Read the detection_power.py script for the source of this code.
 
+Note: This report is only and only an experimental way of understanding
+    and gathering variant calling statistics. It should NOT and must NOT
+    be used for interpretations, diagnosis, nor any form of decision making.
+
 Reads the per-cell genotype table this run produced and answers "given what
 this run measured, what can this run detect?": callability at the target GQ,
 the false-carrier budget, the minimum detectable clone with the allelic-dropout
@@ -17,9 +21,10 @@ to the default value with a note when the run cannot measure it.
 SNV only. The indel genotype table borrows the SNV eps , so a separate indel
 power number would restate this one with an error rate known to be wrong for indels.
 
-Outputs, both to dev/:
-  * <sample>_detection_power.txt   the report
-  * <sample>_detection_power.csv   the same numbers, one row per quantity
+Outputs, both to metrics/ on internal runs only. The experimental_ marker is
+part of the published name:
+  * <sample>_experimental_detection_power.txt   the report
+  * <sample>_experimental_detection_power.csv   the same numbers, one row per quantity
 """
 
 import argparse
@@ -139,6 +144,6 @@ report = compute_power(
 
 text = render_text(report)
 print(text)
-with open(f"{args.sample_name}_detection_power.txt", "w") as handle:
+with open(f"{args.sample_name}_experimental_detection_power.txt", "w") as handle:
     handle.write(text)
-to_table(report).write_csv(f"{args.sample_name}_detection_power.csv")
+to_table(report).write_csv(f"{args.sample_name}_experimental_detection_power.csv")

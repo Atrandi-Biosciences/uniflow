@@ -25,6 +25,7 @@ workflow VARIANT {
 
     VARIANT_HARMONIZE(VARIANT_CALLING.out.vcf)
     VARIANT_MERGING(VARIANT_HARMONIZE.out.harmonized)
+    
     VARIANT_COMPARE(
         VARIANT_HARMONIZE.out.harmonized,
         VARIANT_CALLING.out.fasta,
@@ -60,16 +61,14 @@ workflow VARIANT {
         | BCFTOOLS_STATS_CONSENSUS
 
     emit:
-    metrics         = channel.empty().mix(VARIANT_CALLING.out.out_stats).mix(BCFTOOLS_STATS_CONSENSUS.out.out_stats).mix(VARIANT_COMPARE.out.qc_report).map { meta, files ->
-        return [meta, modality_name, files]
-    }
-    internal_metrics = channel.empty().groupTuple(by: 0).map { meta, files ->
+    metrics          = channel.empty()
+    internal_metrics = channel.empty().mix(VARIANT_CALLING.out.out_stats).mix(BCFTOOLS_STATS_CONSENSUS.out.out_stats).mix(PER_CELL_VARIANTS.out.power_report).mix(PER_CELL_VARIANTS.out.power_table).map { meta, files ->
         return [meta, modality_name, files]
     }
     qc              = channel.empty().mix(QC_VARIANTS.out.png).mix(QC_VARIANTS.out.indel_png).mix(QC_VARIANTS.out.authenticity_png).mix(QC_VARIANTS.out.authenticity_indel_png).map { meta, files ->
         return [meta, modality_name, files]
     }
-    dev             = channel.empty().mix(PER_CELL_VARIANTS.out.variants_catalog_parquet).mix(PER_CELL_VARIANTS.out.snv_parquet).mix(PER_CELL_VARIANTS.out.indel_parquet).mix(PER_CELL_VARIANTS.out.power_report).mix(PER_CELL_VARIANTS.out.power_table).groupTuple(by: 0).map { meta, files ->
+    dev             = channel.empty().mix(PER_CELL_VARIANTS.out.snv_parquet).mix(PER_CELL_VARIANTS.out.indel_parquet).groupTuple(by: 0).map { meta, files ->
         return [meta, modality_name, files]
     }
 

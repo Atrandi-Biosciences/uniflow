@@ -44,6 +44,7 @@ workflow DNA {
     internal_metrics = channel.empty().mix(AMPLICON.out.internal_metrics).mix(VARIANT.out.internal_metrics).groupTuple(by: [0, 1])
     qc               = channel.empty().mix(AMPLICON.out.qc).mix(VARIANT.out.qc).groupTuple(by: [0, 1])
     dev              = channel.empty().mix(AMPLICON.out.dev).mix(VARIANT.out.dev).groupTuple(by: [0, 1])
+    internal_dev     = AMPLICON.out.internal_dev
     out              = channel.empty().mix(AMPLICON.out.out).mix(VARIANT.out.out).groupTuple(by: 0)
     metrics_parquet  = channel.empty().mix(AMPLICON.out.metrics_parquet).mix(VARIANT.out.metrics_parquet)
     counts_h5ad      = channel.empty().mix(AMPLICON.out.h5ad).mix(VARIANT.out.h5ad)

@@ -13,13 +13,13 @@ Nothing is downsampled here; this only measures what is seen and what a cap woul
 do.
 
 Outputs (all derived from the one per-(cell, amplicon) depth parquet):
-  * <sample>_per_cell_amplicon_depth.parquet     per-(cell, amplicon) read counts   -> dev
-  * <sample>_per_cell_amplicon_depth_summary.txt  per-amplicon frac_below_cap etc.  -> dev
-  * <sample>_cap_impact_sweep.csv                 % capped / % reads removed vs N    -> dev
-  * <sample>_depth_histogram.csv                  read-count bin distribution        -> dev
-  * <sample>_per_cell_amplicon_rank_knee_pooled.png    rank-knee, all cell-amplicons -> qc
-  * <sample>_per_cell_amplicon_rank_knee_faceted.png   rank-knee, per-amplicon facet -> qc
-  * <sample>_per_cell_total_rank_knee.png              rank-knee, per-cell total      -> qc
+  * <sample>_per_cell_amplicon_depth.parquet     per-(cell, amplicon) read counts   -> dev, internal runs
+  * <sample>_per_cell_amplicon_depth_summary.txt  per-amplicon frac_below_cap etc.  -> metrics, internal runs
+  * <sample>_cap_impact_sweep.csv                 % capped / % reads removed vs N    -> metrics, internal runs
+  * <sample>_depth_histogram.csv                  read-count bin distribution        -> metrics, internal runs
+  * <sample>_per_cell_amplicon_rank_knee_pooled.png    rank-knee, all cell-amplicons -> work dir only
+  * <sample>_per_cell_amplicon_rank_knee_faceted.png   rank-knee, per-amplicon facet -> work dir only
+  * <sample>_per_cell_total_rank_knee.png              rank-knee, per-cell total      -> work dir only
   * <sample>_cap_impact_curve.png                      % reads kept / % uncapped vs N -> qc
 """
 

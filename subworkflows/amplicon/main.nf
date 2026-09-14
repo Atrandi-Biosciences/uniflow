@@ -86,22 +86,20 @@ workflow AMPLICON {
         | combine(FILTER_AMPLICON_CELLS.out.top_cells_parquet, by: 0)
         | PER_CELL_COVERAGE_QC
 
-    def coverage_qc_metrics = PER_AMPLICON_COVERAGE_QC.out.coverage
-        .mix(PER_CELL_COVERAGE_QC.out.dist_summary)
-        .mix(PER_CELL_COVERAGE_QC.out.tables)
-    def coverage_qc_plots = PER_CELL_COVERAGE_QC.out.plots.mix(subsample_qc_plot)
-
     emit:
-    metrics                         = channel.empty().mix(ALIGN_AMPLICON.out.mapping_rates).mix(coverage_qc_metrics).groupTuple(by: 0).map { meta, files ->
+    metrics                         = channel.empty().mix(ALIGN_AMPLICON.out.mapping_rates).mix(PER_AMPLICON_COVERAGE_QC.out.coverage).groupTuple(by: 0).map { meta, files ->
         return [meta, modality_name, files]
     }
-    internal_metrics                = channel.empty().mix(QC_AMPLICON.out.qc_metrics_csv).groupTuple(by: 0).map { meta, files ->
+    internal_metrics                = channel.empty().mix(QC_AMPLICON.out.qc_metrics_csv).mix(PER_CELL_COVERAGE_QC.out.dist_summary).mix(PER_CELL_COVERAGE_QC.out.tables).groupTuple(by: 0).map { meta, files ->
         return [meta, modality_name, files]
     }
-    qc                              = channel.empty().mix(QC_AMPLICON.out.qc_plots_png).mix(FILTER_AMPLICON_CELLS.out.qc_plots).mix(coverage_qc_plots).groupTuple(by: 0).map { meta, files ->
+    qc                              = channel.empty().mix(QC_AMPLICON.out.qc_plots_png).mix(FILTER_AMPLICON_CELLS.out.qc_plots).mix(PER_CELL_COVERAGE_QC.out.cap_impact_plot).mix(subsample_qc_plot).groupTuple(by: 0).map { meta, files ->
         return [meta, modality_name, files]
     }
-    dev                             = channel.empty().mix(COUNT_AMPLICON.out.filtered_amplicon_reads).mix(COUNT_AMPLICON.out.filtered_amplicon_counts).mix(MERGE_READS.out.merged_reads_parquet).mix(PER_CELL_COVERAGE_QC.out.dist_parquet).groupTuple(by: 0).map { meta, files ->
+    dev                             = channel.empty().mix(COUNT_AMPLICON.out.filtered_amplicon_counts).mix(MERGE_READS.out.merged_reads_parquet).groupTuple(by: 0).map { meta, files ->
+        return [meta, modality_name, files]
+    }
+    internal_dev                    = channel.empty().mix(COUNT_AMPLICON.out.filtered_amplicon_reads).mix(PER_CELL_COVERAGE_QC.out.dist_parquet).groupTuple(by: 0).map { meta, files ->
         return [meta, modality_name, files]
     }
     out                             = channel.empty().mix(amplicon_bam).mix(amplicon_index).groupTuple(by: 0)

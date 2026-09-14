@@ -21,6 +21,7 @@ process PER_AMPLICON_COVERAGE_QC {
 
     output:
     tuple val(meta), path("*_amplicon_coverage.tsv"), emit: coverage
+    tuple val(meta.sample_name), path("*_amplicon_coverage.tsv"), topic: per_sample_report
 
     when:
     task.ext.when == null || task.ext.when
@@ -46,10 +47,11 @@ process PER_CELL_COVERAGE_QC {
     tuple val(meta), path(merged_reads), path(filtered_amplicon_reads), path(top_cells)
 
     output:
-    tuple val(meta), path("*_per_cell_amplicon_depth.parquet"),      emit: dist_parquet
-    tuple val(meta), path("*_per_cell_amplicon_depth_summary.txt"),  emit: dist_summary
-    tuple val(meta), path("*.csv"),                                  emit: tables
-    tuple val(meta), path("*.png"),                                  emit: plots
+    tuple val(meta), path("*_per_cell_amplicon_depth.parquet"),        emit: dist_parquet
+    tuple val(meta), path("*_per_cell_amplicon_depth_summary.txt"),    emit: dist_summary
+    tuple val(meta), path("*.csv"),                                    emit: tables
+    tuple val(meta), path("*_cap_impact_curve.png"),                   emit: cap_impact_plot
+    tuple val(meta), path("*_rank_knee*.png"),                         emit: knee_plots
 
     when:
     task.ext.when == null || task.ext.when
