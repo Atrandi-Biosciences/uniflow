@@ -1,6 +1,6 @@
 include { MERGE_H5AD ; MERGE_METRICS as MERGE_SAMPLE_METRICS ; MERGE_STATUS } from '../modules/shared.nf'
 include { DOWNSTREAM_ANALYSIS                   } from '../modules/downstream_analysis.nf'
-include { GENERATE_AGGREGATED_REPORT ; GENERATE_MULTIQC_CUSTOM } from '../modules/report.nf'
+include { GENERATE_MULTIQC_REPORT ; PREPARE_MULTIQC_REPORT } from '../modules/report.nf'
 
 workflow SAMPLE {
     take:
@@ -10,6 +10,7 @@ workflow SAMPLE {
     metrics_reference_ch
     multiqc_static_config_ch
     multiqc_css_ch
+    internal_flag
 
     main:
     h5ad_files
@@ -45,22 +46,28 @@ workflow SAMPLE {
         }
         | groupTuple(by: 0)
         | MERGE_STATUS
-
-    GENERATE_MULTIQC_CUSTOM(
+    PREPARE_MULTIQC_REPORT(
         metrics_reference_ch,
         MERGE_SAMPLE_METRICS.out.metrics_csv,
         "aggregated_multiqc_config.yaml",
         "single",
+        internal_flag,
     )
 
-    ch_multiqc_files = GENERATE_MULTIQC_CUSTOM.out.custom_metrics_with_id
-
+    ch_multiqc_files = PREPARE_MULTIQC_REPORT.out.custom_metrics_with_id
+    // Need to normalize the multiqc files into individual tuples for further processing
+    ch_multiqc_files = ch_multiqc_files 
+        | flatMap { sample_id, files ->
+            files.collect { file ->
+                tuple(sample_id, file)
+            }
+        }
     per_sample_report = channel.topic("per_sample_report")
     ch_multiqc_files = ch_multiqc_files.mix(per_sample_report).groupTuple(by: 0)
-    GENERATE_AGGREGATED_REPORT(
+    GENERATE_MULTIQC_REPORT(
         ch_multiqc_files,
         "report",
-        GENERATE_MULTIQC_CUSTOM.out.multiqc_config,
+        PREPARE_MULTIQC_REPORT.out.multiqc_config,
         multiqc_static_config_ch,
         multiqc_css_ch,
     )
@@ -69,5 +76,5 @@ workflow SAMPLE {
     counts             = counts_output
     per_sample_metrics = MERGE_SAMPLE_METRICS.out.metrics_csv
     per_sample_status  = MERGE_STATUS.out.status_parquet
-    per_sample_report  = GENERATE_AGGREGATED_REPORT.out.report_with_id
+    per_sample_report  = GENERATE_MULTIQC_REPORT.out.report_with_id
 }

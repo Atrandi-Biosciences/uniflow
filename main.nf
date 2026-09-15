@@ -62,6 +62,7 @@ workflow {
     paramsFile.text = groovy.json.JsonOutput.prettyPrint(
         groovy.json.JsonOutput.toJson(runtime_params)
     )
+    param_path_ch = channel.value(paramsFile)
 
     // Validate input parameters
     validateParameters()
@@ -89,7 +90,7 @@ workflow {
     def metrics_reference_ch = channel.value(file("${projectDir}/assets/metrics/metrics_reference.csv", checkIfExists: true))
     def multiqc_static_config_ch = channel.value(file("${projectDir}/assets/config/multiqc_config.yaml", checkIfExists: true))
     def multiqc_css_ch = channel.value(file("${projectDir}/assets/config/multiqc_report.css", checkIfExists: true))
-
+    def internal_flag = channel.value(params.internal)
 
     def chemistries = new groovy.json.JsonSlurper().parse(file(chemistries_path, checkIfExists: true))
 
@@ -214,6 +215,7 @@ workflow {
         amplicon_fasta_file_ch,
         run_gene_expression_ch,
         run_cross_processing_ch,
+        internal_flag,
     )
 
     ch_multiqc_files = ch_multiqc_files.mix(
@@ -282,6 +284,7 @@ workflow {
         metrics_reference_ch,
         multiqc_static_config_ch,
         multiqc_css_ch,
+        internal_flag
     )
     // Format and generate per library outputs
     LIBRARY(
@@ -294,6 +297,13 @@ workflow {
             SAMPLE.out.per_sample_metrics,
             LIBRARY.out.merged_metrics_csv,
         )
+    
+    qc_merged_channels = channel.empty().mix(RNA.out.qc).mix(DNA.out.qc).mix(BARCODE.out.qc
+    | map {library_id, modality, plots -> def meta = [
+        sample_name: library_id
+    ]
+    return [meta, modality, plots]})
+    
     // Generate aggregated reports for the entire experiment
     EXPERIMENT(
         ch_merged_metrics_csv,
@@ -301,6 +311,10 @@ workflow {
         ch_multiqc_files,
         multiqc_static_config_ch,
         multiqc_css_ch,
+        internal_flag,
+        qc_merged_channels,
+        param_path_ch,
+
     )
 
     publish:
@@ -323,6 +337,7 @@ workflow {
     dna_out              = DNA.out.out
     multiqc_report       = EXPERIMENT.out.report
     experiment_metrics   = EXPERIMENT.out.aggregated_metrics_csv
+    qc_tarball           = EXPERIMENT.out.qc_tarball
 }
 
 
@@ -357,7 +372,7 @@ output {
         path { library_id, library_type, barcode_mappings -> "libraries/${library_id}/dev" }
     }
     barcode_qc {
-        path { library_id, plots -> "libraries/${library_id}/qc/barcode/" }
+        path { library_id, modality, plots -> "libraries/${library_id}/qc/${modality}/" }
     }
     rna_out {
         path { meta, files -> "samples/${meta.sample_name}/RNA/" }
@@ -388,5 +403,8 @@ output {
     }
     status {
         path { sample_id, status_csv -> "samples/${sample_id}/" }
+    }
+    qc_tarball {
+        path { tarball -> "experiment/" }
     }
 }

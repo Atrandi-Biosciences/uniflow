@@ -32,6 +32,17 @@ os.environ["_RJEM_MALLOC_CONF"] = jemalloc_conf
 full_read_parquet: str = sys.argv[1]  # Bam input path
 top_cells_path: str = sys.argv[2]
 sample_name: str = sys.argv[3]
+internal_flag: str = sys.argv[4]
+
+
+if internal_flag == "true":
+    internal = True
+elif internal_flag == "false":
+    internal = False
+else:
+    raise ValueError(
+        f"Invalid value for internal_flag: {internal_flag}, must be 'true' or 'false'"
+    )
 
 # Constants
 FILTERED_INPUT_DATA: Final[str] = "filtered"
@@ -108,13 +119,17 @@ filtered_df_metrics.write_csv(
     f"{sample_name}_{FILTERED_INPUT_DATA}_saturation_metrics.csv"
 )
 
-tenx_v31_filtered = REFERENCE_DATASETS["10x_v3.1_filtered"]
+ref3 = REFERENCE_DATASETS["ref3"]
 
-tenx_v4_filtered = REFERENCE_DATASETS["10x_v4_filtered"]
+ref4 = REFERENCE_DATASETS["ref4"]
 
+if internal:
+    data_to_plot = pl.concat([filtered_df_metrics, ref3, ref4])
+else:
+    data_to_plot = filtered_df_metrics
 
 plot_comparative_saturation_curves(
-    pl.concat([filtered_df_metrics, tenx_v31_filtered, tenx_v4_filtered]),
+    data_to_plot,
     sample_name=sample_name,
     input_type=FILTERED_INPUT_DATA,
 )

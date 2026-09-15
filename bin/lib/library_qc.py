@@ -238,7 +238,7 @@ def plot_comparative_saturation_curves(
 
 
 REFERENCE_DATASETS = {
-    "10x_v4_filtered": pl.DataFrame(
+    "ref4": pl.DataFrame(
         {
             "mean_filtered_reads_per_cell": [
                 0,
@@ -287,8 +287,8 @@ REFERENCE_DATASETS = {
             "median_genes_per_cell": pl.Float32,
             "saturation": pl.Float32,
         },
-    ).with_columns(sample_name=pl.lit("10x v4 filtered")),
-    "10x_v3.1_filtered": pl.DataFrame(
+    ).with_columns(sample_name=pl.lit("ref4")),
+    "ref3": pl.DataFrame(
         {
             "mean_filtered_reads_per_cell": [
                 0,
@@ -357,5 +357,5 @@ REFERENCE_DATASETS = {
             "median_genes_per_cell": pl.Float32,
             "saturation": pl.Float32,
         },
-    ).with_columns(sample_name=pl.lit("10x v3.1 filtered")),
+    ).with_columns(sample_name=pl.lit("ref3")),
 }

@@ -25,7 +25,7 @@ workflow BARCODE {
 
 
 
-
+    def modality_name = "barcode"
     def chemistry_def = new groovy.json.JsonSlurper().parse(file(chemistry_json_path, checkIfExists: true))
     r2_lengths = getLibraryLengths(chemistry_def)
 
@@ -42,5 +42,7 @@ workflow BARCODE {
     emit:
     barcode_mapping          = CORRECT_BARCODE.out.barcode_mapping
     metrics_parquet          = CORRECT_BARCODE.out.metrics_parquet
-    qc                       = QC_BARCODE.out.barcode_qc
+    qc                       = channel.empty().mix(QC_BARCODE.out.barcode_qc).groupTuple(by: 0).map { meta, files ->
+        return [meta, modality_name, files]
+    }
 }

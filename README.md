@@ -17,7 +17,7 @@ This is an alpha version of the pipeline to allow early adopters to gain insight
 
 Uniflow runs **germline SNV** calling on amplicon BAMs via multiple callers in parallel (freebayes, bcftools, VarDict, GATK HaplotypeCaller by default; LoFreq is wired and opt-in via `--variant_callers`). Per-caller VCFs are normalized to SNVs only, merged into a single sample-level consensus VCF carrying `INFO/NCALLERS` and per-caller `FORMAT/{VAF,AD,DP,GT}`, and attributed per cell via pysam pileups. The MultiQC report surfaces per-caller and consensus metrics in two tables plus a caller-agreement UpSet plot per sample.
 
-Indels and somatic mode are out of scope for v1. See [docs/variant_calling_specs.md](docs/variant_calling_specs.md) for the full design.
+Somatic mode is out of scope for v1.
 
 **Breaking change vs. earlier alphas:** the legacy pseudo-bulk `bcftools` SNP path (`PILEUP_READS` → `snps.csv`) was removed. Pipelines that consumed `snp_calling/*.h5ad` should switch to the per-caller outputs under `samples/{sample}/DNA/variants/{caller}/per_cell/`.
 

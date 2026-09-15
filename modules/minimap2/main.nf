@@ -26,7 +26,7 @@ process ALIGN_AMPLICON {
     def args = task.ext.args ?: ''
     def rg = "@RG\\tID:${meta.sample_name}\\tSM:${meta.sample_name}\\tLB:${meta.sample_name}\\tPL:ILLUMINA"
     """
-    minimap2 -ax sr --secondary=no -R '${rg}' -t ${task.cpus} ${args} ${reference} ${read1} \\
+    minimap2 -ax sr --secondary=no --frag=no -R '${rg}' -t ${task.cpus} ${args} ${reference} ${read1} \\
       | samtools sort -@ ${task.cpus - 1} --write-index -o aligned.sorted.bam##idx##aligned.sorted.bam.bai
     samtools flagstats aligned.sorted.bam > ${meta.sample_name}_mapping_rates.txt
 

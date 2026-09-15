@@ -33,7 +33,7 @@ process ALIGN_GENE_EXPRESSION {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = "${modality_name}"
+    def prefix = "${meta.sample_name}"
 
     // separate forward from reverse pairs
     def read_order = meta.library_type == 'RNA' ? "${read1} ${read2}" : "${read1} ${read2}"
@@ -129,7 +129,7 @@ process GET_SATURATION_CURVES {
     debug false
 
     input:
-    tuple val(meta), path(full_read_parquet), path(top_cells)
+    tuple val(meta), path(full_read_parquet), path(top_cells), val (internal_flag)
 
     output:
 
@@ -140,7 +140,7 @@ process GET_SATURATION_CURVES {
     script:
 
     """
-        get_saturation_curves.py ${full_read_parquet} ${top_cells} ${meta.sample_name}
+        get_saturation_curves.py ${full_read_parquet} ${top_cells} ${meta.sample_name} ${internal_flag}
         """
 
     stub:

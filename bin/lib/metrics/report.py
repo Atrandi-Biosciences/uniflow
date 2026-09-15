@@ -11,7 +11,10 @@ def slug(s: str) -> str:
 
 
 def build_config(
-    metrics_reference_csv: Path, aggregated_metrics_csv: Path, scope: str
+    metrics_reference_csv: Path,
+    aggregated_metrics_csv: Path,
+    scope: str,
+    internal_flag: bool,
 ) -> dict:
     metrics = pl.read_csv(aggregated_metrics_csv)
     # Back-compat: old modality name
@@ -31,12 +34,16 @@ def build_config(
             "human_readable_name": pl.Utf8,
             "description": pl.Utf8,
             "report": pl.Utf8,
+            "customer_facing": pl.Boolean,
             "min_warning_threshold": pl.Utf8,
             "max_warning_threshold": pl.Utf8,
             "min_failure_threshold": pl.Utf8,
             "max_failure_threshold": pl.Utf8,
         },
     )
+    # if customer facing, delete internal metrics
+    if not internal_flag:
+        ref = ref.filter(pl.col("customer_facing"))
 
     ref = ref.with_columns(pl.col("report").str.to_lowercase())
 

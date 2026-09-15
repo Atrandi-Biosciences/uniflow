@@ -30,9 +30,6 @@ The six outputs are, in the order they require and drive each other:
   4. the ADO correction: dropout removes carrier cells for that variant, it does not add noise
   5. the bulk discovery phase ceiling: bulk_min_vaf / AD floor expressed in carrier cells
   6. the binding constraint, named
-
-Read section 5 of docs/adr/variant_filtering.md before changing any of it. The
-appendix (section 7) defines every term used here.
 """
 
 from __future__ import annotations
@@ -696,7 +693,7 @@ def to_table(report: PowerReport) -> pl.DataFrame:
     """One row per quantity: sample, quantity, value, unit, provenance.
 
     Long rather than wide so a cross-run store can append runs without a schema
-    migration every time a quantity is added (see docs/results_accumulation_design.md).
+    migration every time a quantity is added.
     """
     r = report
     ado_provenance = "measured" if r.ado_measured else "assumed"

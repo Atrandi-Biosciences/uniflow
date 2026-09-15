@@ -113,7 +113,6 @@ counts_lf.sink_parquet(f"{Modality.AMPLICON.value}_counts.parquet")
 # Read-name allowlist -> per-cell variant attribution (count_variant*.py). Same
 # anchored set as the counts above; the two differ only in projected columns.
 variant_reads = anchored.select(READ_NAME)
-metrics.add("variant_reads", variant_reads.select(pl.len()).collect().item())
 variant_reads.sink_parquet("filtered_amplicon_reads.parquet")
 
 metrics.write_records("metrics.parquet")

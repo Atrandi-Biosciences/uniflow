@@ -153,17 +153,10 @@ full_barcode_mapping = barcode_mapping.with_columns(
 corrected_filtered_reads = barcode_mapping.select(pl.len()).collect().item()
 
 metrics.add("total_reads_with_valid_full_barcode", corrected_filtered_reads)
-metrics.add(
-    "total_reads_without_valid_full_barcode", total_reads - corrected_filtered_reads
-)
 fraction_reads_with_valid_full_barcode = corrected_filtered_reads / total_reads
 metrics.add(
     "fraction_reads_with_valid_full_barcode",
     fraction_reads_with_valid_full_barcode,
-)
-metrics.add(
-    "fraction_reads_without_valid_full_barcode",
-    1 - fraction_reads_with_valid_full_barcode,
 )
 full_barcode_mapping.sink_parquet(f"{sample_name}_barcodes_mapping.parquet")
 

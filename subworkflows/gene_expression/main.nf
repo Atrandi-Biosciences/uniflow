@@ -9,6 +9,7 @@ workflow GENE_EXPRESSION {
     whitelist_ch
     sample_barcode_mappings
     trimming_length
+    internal_flag
 
     main:
     def modality_name = "gene_expression"
@@ -28,6 +29,7 @@ workflow GENE_EXPRESSION {
 
 
     FILTER.out.to_saturation
+        | combine(internal_flag)
         | GET_SATURATION_CURVES
 
     emit:

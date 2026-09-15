@@ -22,8 +22,8 @@ from lib.common_const import BARCODE, READ_NAME, READS
 #
 #   DEFAULT_ERROR_EPS / DEFAULT_ERROR_RHO / DEFAULT_MIN_GQ : the genotype
 #       likelihood parameters. See "Note on the genotype" below; the defaults
-#       are the values measured on the 10M run (docs/stage_a/), and every run
-#       is expected to measure its own.
+#       are the values measured on the 10M run, and every run is expected to
+#       measure its own.
 #
 #   DEFAULT_FLAG_MIN_DP : the depth below which a per-allele row is labelled
 #       lowDP. It is also the cell-support callable-coverage denominator. It no
@@ -546,9 +546,8 @@ def genotype_label_exprs(ref_col: str):
 CELLS_SUPPORTING_ALT: Final[str] = "cells_supporting_alt"
 CELLS_TOTAL_AT_SITE: Final[str] = "cells_total_at_site"
 
-# Genomic-coordinate columns (PR6 / COMB-532). Public output names per the
-# per_cell_pileup_output_improvements.md schema: chrom is the real
-# chromosome and pos is the 1-based genomic position. They live beside
+# Genomic-coordinate columns (PR6 / COMB-532). Public output names: chrom is
+# the real chromosome and pos is the 1-based genomic position. They live beside
 # feature (the amplicon contig) and pos_local_0based (amplicon-local).
 GENOMIC_CHROM: Final[str] = "chrom"
 GENOMIC_POS: Final[str] = "pos"

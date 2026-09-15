@@ -11,6 +11,7 @@ workflow RNA {
     amplicon_fasta_file_ch
     run_gene_expression_ch
     run_cross_processing_ch
+    internal_flag
 
     main:
     // rna libraries if run_gene_expression_ch is true, else an empty channel
@@ -26,6 +27,7 @@ workflow RNA {
         whitelist_ch,
         sample_barcode_mappings,
         trimming_length,
+        internal_flag
     )
 
     rna_libraries.combine(run_cross_processing_ch)

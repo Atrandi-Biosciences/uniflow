@@ -1,7 +1,0 @@
-a	b	n	median_abs_dAF	max_abs_dAF	pearson_r
-lofreq_100000t	lofreq_100000t_250000d	413	0.00000	0.22339	0.9982
-lofreq_100000t	lofreq_100000t_minbq10_minmq50	413	0.00782	0.23527	0.9938
-lofreq_100000t	lofreq_10000t_minbq10_minmq50	413	0.00782	0.23527	0.9938
-lofreq_100000t_250000d	lofreq_100000t_minbq10_minmq50	413	0.00852	0.23527	0.9924
-lofreq_100000t_250000d	lofreq_10000t_minbq10_minmq50	413	0.00852	0.23527	0.9924
-lofreq_100000t_minbq10_minmq50	lofreq_10000t_minbq10_minmq50	413	0.00000	0.00000	1.0000
