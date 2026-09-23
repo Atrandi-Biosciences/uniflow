@@ -11,7 +11,7 @@ version_variables = [
 [tool.semantic_release.commit_parser_options]
 # our rules
 minor_tags = ["feat"]
-patch_tags = ["fix"]
+patch_tags = ["fix", "docs"]
 allowed_tags = ["feat", "fix", "chore", "docs", "ci", "test"]
 parse_squash_commits = true
 ignore_merge_commits = false

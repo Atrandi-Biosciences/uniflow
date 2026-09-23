@@ -66,8 +66,8 @@
           "enum": [
             "B4_24_v1",
             "B4_96_v1",
-            "B4_24_v1-no-var",
-            "B4_96_v1-no-var"
+            "B4_24_v1-no-variant",
+            "B4_96_v1-no-variant"
           ]
         },
         "disable_validation": {

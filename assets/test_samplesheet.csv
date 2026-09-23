@@ -1,0 +1,9 @@
+sample_name,fastq_1,fastq_2,library_type
+sample1,s3://atrandi-public/public/alpha2/test_data/Lib1_RNA_L001_R1_001.fastq.gz,s3://atrandi-public/public/alpha2/test_data/Lib1_RNA_L001_R2_001.fastq.gz,RNA
+sample1,s3://atrandi-public/public/alpha2/test_data/Lib2_DNA_L001_R1_001.fastq.gz,s3://atrandi-public/public/alpha2/test_data/Lib2_DNA_L001_R2_001.fastq.gz,DNA
+sample1,s3://atrandi-public/public/alpha2/test_data/Lib1_RNA_L002_R1_001.fastq.gz,s3://atrandi-public/public/alpha2/test_data/Lib1_RNA_L002_R2_001.fastq.gz,RNA
+sample1,s3://atrandi-public/public/alpha2/test_data/Lib2_DNA_L002_R1_001.fastq.gz,s3://atrandi-public/public/alpha2/test_data/Lib2_DNA_L002_R2_001.fastq.gz,DNA
+sample2,s3://atrandi-public/public/alpha2/test_data/Lib3_RNA_L001_R1_001.fastq.gz,s3://atrandi-public/public/alpha2/test_data/Lib3_RNA_L001_R2_001.fastq.gz,RNA
+sample2,s3://atrandi-public/public/alpha2/test_data/Lib4_DNA_L001_R1_001.fastq.gz,s3://atrandi-public/public/alpha2/test_data/Lib4_DNA_L001_R2_001.fastq.gz,DNA
+sample2,s3://atrandi-public/public/alpha2/test_data/Lib3_RNA_L002_R1_001.fastq.gz,s3://atrandi-public/public/alpha2/test_data/Lib3_RNA_L002_R2_001.fastq.gz,RNA
+sample2,s3://atrandi-public/public/alpha2/test_data/Lib4_DNA_L002_R1_001.fastq.gz,s3://atrandi-public/public/alpha2/test_data/Lib4_DNA_L002_R2_001.fastq.gz,DNA

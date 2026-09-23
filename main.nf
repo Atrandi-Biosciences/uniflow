@@ -372,6 +372,7 @@ output {
         path { library_id, library_type, barcode_mappings -> "libraries/${library_id}/dev" }
     }
     barcode_qc {
+        enabled params.internal
         path { library_id, modality, plots -> "libraries/${library_id}/qc/${modality}/" }
     }
     rna_out {
