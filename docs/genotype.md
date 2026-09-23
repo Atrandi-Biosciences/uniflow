@@ -6,7 +6,7 @@
 
 ---
 
-# Understand genotype outputs
+# Understand genotype outputs foo
 
 Uniflow pipeline discovers SNVs and indels in the DNA amplicon library and genotypes individual cells at each discovered variant. This page describes where the genotypes are, how they are called, and what each field means.
 
