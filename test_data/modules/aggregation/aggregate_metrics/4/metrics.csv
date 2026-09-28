@@ -1,6 +1,0 @@
-source_id,library_type,modality,metric_key,value
-Lib1_RNA_L002,RNA,barcode,total_reads,87500.0
-Lib1_RNA_L002,RNA,barcode,total_reads_with_valid_full_barcode,87500.0
-Lib1_RNA_L002,RNA,barcode,total_reads_without_valid_full_barcode,0.0
-Lib1_RNA_L002,RNA,barcode,fraction_reads_with_valid_full_barcode,1.0
-Lib1_RNA_L002,RNA,barcode,fraction_reads_without_valid_full_barcode,0.0

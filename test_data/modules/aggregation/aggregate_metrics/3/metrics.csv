@@ -1,6 +1,0 @@
-source_id,library_type,modality,metric_key,value
-Lib2_DNA_L002,DNA,barcode,total_reads,62500.0
-Lib2_DNA_L002,DNA,barcode,total_reads_with_valid_full_barcode,62500.0
-Lib2_DNA_L002,DNA,barcode,total_reads_without_valid_full_barcode,0.0
-Lib2_DNA_L002,DNA,barcode,fraction_reads_with_valid_full_barcode,1.0
-Lib2_DNA_L002,DNA,barcode,fraction_reads_without_valid_full_barcode,0.0

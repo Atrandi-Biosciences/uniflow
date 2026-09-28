@@ -56,6 +56,7 @@ process DEMULTIPLEX_FASTQ {
     script:
     def output_name = "${meta.sample_name}_${meta.library_type}_${read_identity}.fastq.gz"
     """
+        set -o pipefail
         seqtk subseq ${fastq} ${per_sample_reads} | pigz -p ${task.cpus} > ${output_name}
         """
 

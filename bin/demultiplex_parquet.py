@@ -23,10 +23,15 @@ demultiplexing_sheet = pl.read_csv(demultiplexing_sheet_path)
 
 # First check if the library needs to be demultiplexed or not
 
-sample_df = demultiplexing_sheet.filter(
-    pl.col(SAMPLE_NAME) == sample_name, pl.col(BARCODE).is_not_null()
+sample_df = (
+    demultiplexing_sheet.filter(
+        pl.col(SAMPLE_NAME) == sample_name,
+        pl.col(BARCODE).is_not_null(),
+    )
+    .select(BARCODE)
+    .unique()
 )
-if sample_df.select(BARCODE).unique().is_empty():
+if sample_df.select(BARCODE).is_empty():
     needs_demultiplexing = False
 else:
     needs_demultiplexing = True
@@ -38,13 +43,15 @@ if needs_demultiplexing:
     subset = barcode_mappings.with_columns(
         barcode_a=pl.col(BARCODE).str.split("_").list.get(3)
     ).join(
-        sample_df.lazy().select(BARCODE),
+        sample_df.lazy(),
         right_on=BARCODE,
         left_on="barcode_a",
         how="inner",
     )
     subset.sink_parquet(f"{sample_name}_barcode_mappings.parquet")
-    subset.select(READ_NAME).sink_csv(f"{sample_name}_reads.txt", include_header=False)
+    subset.select(READ_NAME).unique().sink_csv(
+        f"{sample_name}_reads.txt", include_header=False
+    )
 else:
     shutil.copy(
         barcode_mappings_path,
