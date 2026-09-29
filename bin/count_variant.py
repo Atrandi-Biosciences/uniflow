@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-import sys
 
 import polars as pl
 import pysam
-from lib.common_const import BARCODE
+from lib.common_const import BARCODE, LibraryType, Modality
 from lib.modality.dna.processing import (
     ALT_OUT,
     ALT_READS,
@@ -49,6 +48,7 @@ from lib.modality.dna.processing import (
     per_site_cell_support,
 )
 from lib.modality.dna.variant_matrix import build_snv_anndata
+from lib.pipeline.status import ReasonCode, StatusRecord
 
 # Named per-cell thresholds are Nextflow params (conf/variant.config); the
 # defaults here only apply when the script is run by hand.
@@ -95,6 +95,12 @@ sample_name = args.sample_name
 barcode_mapping_path = args.barcode_mapping
 calls_parquet_path = args.calls_parquet
 filtered_amplicon_reads_path = args.filtered_amplicon_reads
+
+status = StatusRecord(
+    source_id=sample_name,
+    library_type=LibraryType.DNA,
+    modality=Modality.SNV,
+)
 
 
 # the per-cell pileup is caller-independent. limit the scope to SNV-only
@@ -156,8 +162,12 @@ if selected_features.shape[0] > 0:
         # Every selected site failed the pooled coverage or none of the
         # spanning reads belongs to a called cell
         empty_raw_variants().write_parquet("raw_variants.parquet")
-        print(f"No SNV pileup support for {sample_name}, skipping")
-        sys.exit(0)
+        status.record_and_exit(
+            ReasonCode.LOW_COVERAGE,
+            f"No called SNV position in {sample_name} was piled up: every site "
+            "failed the pooled-coverage gate, or no spanning read belongs to a "
+            "called cell.",
+        )
 
     raw_snp = cell_counts.lazy()
 
@@ -211,11 +221,9 @@ if selected_features.shape[0] > 0:
         rho=args.error_rho,
     ).collect()
 
-    # mod["snv"]: cells x every amplicon position,
-    # X = non-reference VAF i.e. AD/DP, the base composition strucutured data
-    # and the genotype in layers. Feature comes from the FASTA, not from
-    # what was called, so the reference sequence reconstructs.
-    # var["is_measured"] says which columns were actually piled up.
+    # mod["snv"]: cells x the piled-up positions, X = non-reference VAF,
+    # base composition and genotype in layers. Not every amplicon base: a
+    # declared target the pileup never reached is in uns, not var.
     build_snv_anndata(
         raw_snp=raw_snp,
         genotypes=all_snps,
@@ -269,4 +277,8 @@ else:
     # If no called positions for this sample still produce a schema-matched empty
     # raw_variants.parquet so the raw_variants_parquet output always has a file to read.
     empty_raw_variants().write_parquet("raw_variants.parquet")
-    print(f"No SNPs found for {sample_name}, skipping")
+    status.record_and_exit(
+        ReasonCode.LOW_FEATURES,
+        f"No SNVs were called for {sample_name}, so there is nothing to "
+        "attribute per cell.",
+    )

@@ -10,12 +10,11 @@ writes its own outputs next to the SNV ones:
 """
 
 import argparse
-import sys
 from typing import Final
 
 import polars as pl
 import pysam
-from lib.common_const import BARCODE
+from lib.common_const import BARCODE, LibraryType, Modality
 from lib.modality.dna.processing import (
     ALT_OUT,
     ALT_READS,
@@ -62,6 +61,7 @@ from lib.modality.dna.processing import (
     unattributed_indel_site_rows,
 )
 from lib.modality.dna.variant_matrix import build_indel_anndata
+from lib.pipeline.status import ReasonCode, StatusRecord
 
 # Named per-cell thresholds are Nextflow params (conf/variant.config)
 parser = argparse.ArgumentParser(
@@ -113,6 +113,14 @@ filtered_amplicon_reads_path = args.filtered_amplicon_reads
 # Only INS and DEL variants are selected here
 INDEL_TYPES: Final[list[str]] = ["INS", "DEL"]
 
+# Every path that leaves without a matrix records why, so "this sample has no
+# indel output" is answerable from status.csv rather than from the task log.
+status = StatusRecord(
+    source_id=sample_name,
+    library_type=LibraryType.DNA,
+    modality=Modality.INDEL,
+)
+
 
 def _calls_lf() -> pl.LazyFrame:
     """Catalog parquet scoped to the indel records this script attributes."""
@@ -141,8 +149,11 @@ if selected_features.shape[0] == 0:
     # No indels called for this sample; still emit a schema-correct empty raw
     # output so the raw_variants_indel_parquet emit always has a file.
     empty_raw_indels().write_parquet("raw_variants_indel.parquet")
-    print(f"No indels found for {sample_name}, skipping")
-    sys.exit(0)
+    status.record_and_exit(
+        ReasonCode.LOW_FEATURES,
+        f"No indels were called for {sample_name}, so there is nothing to "
+        "attribute per cell.",
+    )
 
 samfile_handle = pysam.AlignmentFile(bam_path, "rb")
 # Amplicon-to-genome lift from the self-describing FASTA headers (empty table for
@@ -172,8 +183,11 @@ print("Indel pileups done")
 
 if cell_counts is None or cell_counts.shape[0] == 0:
     empty_raw_indels().write_parquet("raw_variants_indel.parquet")
-    print(f"No indel pileup support for {sample_name}, skipping")
-    sys.exit(0)
+    status.record_and_exit(
+        ReasonCode.LOW_COVERAGE,
+        f"No called indel anchor in {sample_name} was spanned by a read from a "
+        "called cell.",
+    )
 
 observed = cell_counts.lazy()
 called_alleles = indel_called_alleles(_calls_lf())
@@ -188,8 +202,7 @@ cell_support = per_site_indel_cell_support(
     flag_min_vaf=args.flag_min_vaf,
 )
 
-# Called indel alleles whose read signature matched no pileup read are
-# dropped by the inner join in indel_alt_long. They are surfaced here them as
+# Called indel alleles no cell carries a read of are surfaced here as
 # zero-support site-level rows so nothing silently disappears and the drop
 # stays countable.
 attributed_wide = format_raw_indels_wide(
@@ -209,12 +222,9 @@ pl.concat([attributed_wide, unattributed_wide]).sink_parquet(
     "raw_variants_indel.parquet"
 )
 
+# No empty check: every piled-up anchor is a called one, so alt_long is empty
+# only when cell_counts is, and that already exited above.
 alt_long = alt_long.collect()
-if alt_long.shape[0] == 0:
-    # Indels were called but no cell read supports them; raw output already
-    # written above, h5ad/parquet are optional outputs so we stop here.
-    print(f"No per-cell indel support for {sample_name}, skipping")
-    sys.exit(0)
 
 # Per-cell genotype per called allele from the beta-binomial likelihood. cells
 # too shallow to separate the genotypes come out lowGQ / lowqual. Each indel

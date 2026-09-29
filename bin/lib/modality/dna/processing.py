@@ -1504,12 +1504,16 @@ def per_site_indel_cell_support(
         .group_by(FEATURE, POS_LOCAL)
         .agg(pl.col(BARCODE).n_unique().cast(pl.Int32).alias(CELLS_TOTAL_AT_SITE))
     )
-    cells_alt = (
-        alt_long.filter(
-            (pl.col(TOTAL_READS) >= flag_min_dp) & (pl.col(VAF) >= flag_min_vaf)
+    cells_alt = alt_long.group_by(FEATURE, POS_LOCAL, REF_OUT, ALT_OUT).agg(
+        pl.col(BARCODE)
+        .filter(
+            (pl.col(ALT_READS) > 0)
+            & (pl.col(TOTAL_READS) >= flag_min_dp)
+            & (pl.col(VAF) >= flag_min_vaf)
         )
-        .group_by(FEATURE, POS_LOCAL, REF_OUT, ALT_OUT)
-        .agg(pl.col(BARCODE).n_unique().cast(pl.Int32).alias(CELLS_SUPPORTING_ALT))
+        .n_unique()
+        .cast(pl.Int32)
+        .alias(CELLS_SUPPORTING_ALT)
     )
     return cells_alt.join(cells_total, on=[FEATURE, POS_LOCAL], how="left").select(
         FEATURE,
@@ -1521,40 +1525,50 @@ def per_site_indel_cell_support(
     )
 
 
+def indel_anchor_coverage(observed: pl.LazyFrame) -> pl.LazyFrame:
+    """Per (barcode, feature, anchor): anchor depth and reference-supporting reads.
+
+    An anchor-deleted read has a null indel_len that no comparison matches, so
+    it lands outside ref_reads and outside every allele's alt_reads: that is the
+    DP > 0, REF + AD == 0 cell with nothing to genotype.
+    """
+    return observed.group_by(BARCODE, FEATURE, POS_LOCAL).agg(
+        pl.col(TOTAL_READS).first(),
+        pl.col(READS).filter(pl.col(INDEL_LEN) == 0).sum().alias(REF_READS),
+    )
+
+
 def indel_alt_long(
     observed: pl.LazyFrame,
     called_alleles: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """Inner-join the per-cell observed signatures onto the called alleles to get
-    one row per (barcode, called indel allele): the supporting read count
-    (alt_reads), the cell's reference-supporting count at the anchor (ref_reads),
-    the cell's site total (total_reads), vaf, the consensus callers/n_callers,
-    and the indel_feature key feature:pos:ref>alt.
+    """One row per (cell spanning a called anchor, called allele at that anchor).
 
-    The inner join drops reference reads (indel_len == 0) and anchor-deleted
-    reads (indel_len null), since neither matches a non-zero called signature!
-    Those reference reads are exactly what ref_reads counts, so it is computed
-    from 'observed' before the join and broadcast onto every allele row of the
-    cell-site. total_reads stays the wider denominator (every spanning read,
-    anchor-deleted ones included); ref_reads + alt_reads is the narrower n the
-    genotype likelihood needs.
+    Coverage drives the join, not the observed signature, so a covered
+    non-carrier arrives at alt_reads=0 and filter_indels calls it hom-ref.
+
+    Per EVENT, never per anchor: events share indel anchors in the VCF sense
+    and a carrier of one is a non-carrier of the other, so summing total_reads
+    over rows double counts a shared anchor.
+
+    total_reads is the wider denominator (anchor-deleted reads included);
+    ref_reads + alt_reads is the n the likelihood needs. mean_mq stays null for
+    a non-carrier, which soft_filter_expr reads as unknown, not as a failure.
     """
-    ref_reads = (
-        observed.filter(pl.col(INDEL_LEN) == 0)
-        .group_by(BARCODE, FEATURE, POS_LOCAL)
-        .agg(pl.col(READS).sum().alias(REF_READS))
-    )
     return (
-        observed.join(
-            called_alleles,
-            on=[FEATURE, POS_LOCAL, INDEL_LEN, INSERTED_SEQ],
-            how="inner",
+        indel_anchor_coverage(observed)
+        .join(called_alleles, on=[FEATURE, POS_LOCAL], how="inner")
+        .join(
+            observed.select(
+                BARCODE, FEATURE, POS_LOCAL, INDEL_LEN, INSERTED_SEQ, READS, MEAN_MQ
+            ),
+            on=[BARCODE, FEATURE, POS_LOCAL, INDEL_LEN, INSERTED_SEQ],
+            how="left",
+            validate="m:1",
         )
-        .join(ref_reads, on=[BARCODE, FEATURE, POS_LOCAL], how="left")
+        .with_columns(pl.col(READS).fill_null(0).alias(ALT_READS))
         .with_columns(
-            pl.col(REF_READS).fill_null(0),
-            pl.col(READS).alias(ALT_READS),
-            (pl.col(READS) / pl.col(TOTAL_READS)).alias(VAF),
+            (pl.col(ALT_READS) / pl.col(TOTAL_READS)).alias(VAF),
             pl.format("{}:{}:{}>{}", FEATURE, POS_LOCAL, REF_OUT, ALT_OUT).alias(
                 INDEL_FEATURE
             ),
@@ -1618,12 +1632,15 @@ def unattributed_indel_site_rows(
     alt_long: pl.LazyFrame,
     genomic_map: pl.DataFrame | None = None,
 ) -> pl.LazyFrame:
-    """Site-level placeholder rows for called INS/DEL alleles no read attributed for!
+    """Site-level placeholder rows for called INS/DEL alleles no cell covers.
 
-    The indel signature join in indel_alt_long is an INNER join, so a called
-    allele whose (indel_len, inserted_seq) matches no pileup read is dropped
-    from the per-cell output entirely (Note for myself: finding is that 14/37 on
-    the AWS downsampled sample run, incl. 4-caller consensus calls).
+    Now that indel_alt_long is coverage-driven, "absent from alt_long" means the
+    anchor was never piled up, which is the only class left with no per-cell
+    trace. An allele that WAS covered and simply carried by nobody describes
+    itself through its own rows, so it must not get a placeholder too: it would
+    be the same allele reported twice, once at cells_supporting_alt 0 and once
+    per cell.
+
     Here we anti-join those alleles back and create one zero-support placeholder each
     (barcode null, alt_reads/cell counts 0, reads/vaf null) so nothing silently
     disappears; the schema matches format_raw_indels_wide so the two concat
@@ -1698,6 +1715,14 @@ def filter_indels(
     covered cell that simply does not carry the indel is a called homref rather
     than lowqual. Each called indel allele is genotyped independently (no
     SNV-style per-site collapse), so one row per (barcode, allele) is sufficient.
+
+    hom-ref is per allele:
+    n is ref_reads plus this allele's alt_reads, and ref_reads means only
+    "carries no indel", since the anchor pileup never records the base. So
+    a cell het for a different indel here scores 0/0, and so does one with
+    a substitution at the anchor. Other indels and anchor-deleted reads sit
+    outside n, below total_reads.
+
     Depth, VAF, and mean mapping quality all will come along; mean_bq is null
     (indels have no single anchor base quality) so this table unions cleanly with
     the SNV genotype table!

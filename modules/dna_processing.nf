@@ -82,6 +82,7 @@ process COUNT_VARIANT {
     tuple val(meta), path("variants_count.h5ad"), emit: variants_count_h5ad, optional: true
     tuple val(meta), path("variants_count.parquet"), emit: variants_count_parquet, optional: true
     tuple val(meta), path("raw_variants.parquet"), emit: raw_variants_parquet
+    tuple val(meta), path("status.parquet"), topic: status, optional: true
 
     script:
     // Per-cell thresholds are named flags supplied via ext.args (conf/variant.config).
@@ -112,6 +113,7 @@ process COUNT_VARIANT_INDEL {
     tuple val(meta), path("variants_indel_count.h5ad"), emit: variants_indel_count_h5ad, optional: true
     tuple val(meta), path("variants_indel_count.parquet"), emit: variants_indel_count_parquet, optional: true
     tuple val(meta), path("raw_variants_indel.parquet"), emit: raw_variants_indel_parquet
+    tuple val(meta), path("status.parquet"), topic: status, optional: true
 
     script:
     def args = task.ext.args ?: ''

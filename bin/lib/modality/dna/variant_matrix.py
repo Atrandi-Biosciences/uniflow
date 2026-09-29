@@ -1,6 +1,6 @@
 """Builds the two per-cell variant AnnData objects.
 
-    mdata.mod["snv"]    cells x every position of every amplicon
+    mdata.mod["snv"]    cells x the amplicon positions that were piled up
     mdata.mod["indel"]  cells x called indel events
 
 Both of these are projections of DFs count_variant.py and count_variant_indel.py
@@ -10,11 +10,14 @@ likelihood or the parquet outputs.
 Every function is clearly defined what they do, the following is the general items
 that is not immediately refelcted in each function:
 
-  - a column with is_measured False was never piled up, so its zeros mean
-    "unknown", not "reference".
+  - the SNV axis is the measured positions, not every amplicon base: the pileup
+    only visits called positions. uns["declared_target_sites"] keeps the rest.
   - DP is ACGT only. no-calls sit in AD_N, so DP is not raw_variants.total_reads
   - nonref_count is `DP - AD[ref_base]`, any nonref rather than the dominant one
-  - GT is 0 (no_call) whenever the genotype FILTER is not PASS
+  - GT is 1/2/3 for every genotyped pair whatever its GQ, -1 where there was
+    nothing to genotype, and GQ is NaN exactly there. Filtering is the
+    consumer's, with `GT in {1,2,3} AND GQ >= 30`.
+  - GT and GQ are dense, every other layer sparse.
   - an indel del spans the deleted bases, so end - start + 1 is the deleted
     length.
   - an ins spans the two bases it sits between, so it is always 2
@@ -32,14 +35,12 @@ import polars as pl
 import pysam
 import scipy.sparse as sp
 
-from lib.common_const import BARCODE, MODALITY, READS, Modality
+from lib.common_const import BARCODE, LAYER_GQ, LAYER_GT, MODALITY, READS, Modality
 from lib.modality.dna.processing import (
     ALT_OUT,
     ALT_READS,
     BASES,
     FEATURE,
-    FILTER,
-    FILTER_PASS,
     G0,
     GQ,
     GT,
@@ -47,7 +48,6 @@ from lib.modality.dna.processing import (
     GT_HOM_ALT,
     GT_HOM_REF,
     INDEL_FEATURE,
-    INDEL_LEN,
     N_CALLERS,
     POS,
     POS_LOCAL,
@@ -56,6 +56,7 @@ from lib.modality.dna.processing import (
     REF_READS,
     TARGET_GENOMIC_POS,
     TOTAL_READS,
+    indel_anchor_coverage,
     parse_amplicon_headers,
 )
 
@@ -71,8 +72,6 @@ INDEL_MODALITY: Final[str] = Modality.INDEL.value
 # AD_N is our invention. Standard ones are below
 # This means no-calls stay visible outside DP.
 LAYER_DP: Final[str] = "DP"
-LAYER_GT: Final[str] = "GT"
-LAYER_GQ: Final[str] = "GQ"
 LAYER_AD: Final[str] = "AD"
 LAYER_REF: Final[str] = "REF"
 LAYER_OTHER_INDEL: Final[str] = "OTHER_INDEL"
@@ -90,13 +89,16 @@ NO_CALL_BASE: Final[str] = "N"
 NO_CALL_LAYER: Final[str] = "AD_N"
 SNV_AD_LAYERS: Final[Mapping[str, str]] = {**ACGT_LAYERS, NO_CALL_BASE: NO_CALL_LAYER}
 
-# GT codes
-# 0 doubles as the sparse fill.
-# unmeasured and uncalled are both no_call, which is what keeps the object sparse.
-GT_NO_CALL: Final[int] = 0
+# GT codes. -1 is "nothing to genotype", NOT "DP == 0": an indel cell whose
+# every spanning read is anchor-deleted has DP > 0 and REF + AD == 0. 0 stays
+# reserved so a stray sparse fill can never read as a genotype.
+GT_NOT_GENOTYPED: Final[int] = -1
 GT_HOM_REF_CODE: Final[int] = 1
 GT_HET_CODE: Final[int] = 2
 GT_HOM_ALT_CODE: Final[int] = 3
+# Not 0: the model emits GQ 0.0000 on a zygosity boundary, so 0 would mean two
+# things again.
+GQ_NOT_GENOTYPED: Final[float] = np.nan
 
 # var / obs field names.
 VAR_AMPLICON_ID: Final[str] = "amplicon_id"
@@ -165,13 +167,23 @@ SNV_UNS: Final[dict[str, str]] = {
     "x_definition": "nonref_count / DP, nonref_count = DP - AD[ref_base]",
     "depth_definition": "AD_A + AD_C + AD_G + AD_T; no-calls are in AD_N",
     "measured_scope": (
-        "positions at least one attributed read reached. Not the same as "
-        "var['is_candidate_variant'], which is what pseudobulk called: a called "
-        "site can fail the pooled-coverage gate and end up unmeasured. "
-        "var['is_measured'] False means the position was never piled up, so its "
-        "zeros are unknown, not reference"
+        "the var axis is the positions at least one attributed read reached. "
+        "The pileup only visits positions a caller called, so a position absent "
+        "from var was never looked at, not looked at and found reference. Not "
+        "the same as var['is_candidate_variant']: a called site can fail the "
+        "pooled-coverage gate and end up unmeasured. "
+        "uns['declared_target_sites'] carries the panel's declared targets and "
+        "whether each was measured"
     ),
-    "gt_encoding": "0 no_call, 1 hom_ref, 2 het, 3 hom_alt, 4 reserved",
+    "gt_encoding": (
+        "-1 not genotyped, 1 hom_ref, 2 het, 3 hom_alt; 0 reserved, 4 reserved "
+        "for multi-allelic and never emitted. Every genotyped pair gets 1/2/3 "
+        "whatever its GQ, so a GQ-filtered view is "
+        "`GT in (1,2,3) AND GQ >= min_gq`. -1 is not DP == 0: a cell whose "
+        "every spanning read is anchor-deleted has depth but nothing to "
+        "genotype. GQ is NaN exactly at -1, never 0, since 0 is a real GQ on a "
+        "zygosity boundary"
+    ),
     "obs_total_amplicon_depth": (
         "sum of per-position DP over the positions this modality measured, so "
         "read-observations rather than reads: a read spanning many measured "
@@ -205,33 +217,36 @@ INDEL_UNS: Final[dict[str, str]] = {
         "could be attributed to (event_qc_pass False)"
     ),
     "cell_axis": (
-        "every cell covering a called anchor. DP/REF cover all of them; GT/GQ "
-        "are computed for the attributed (cell, allele) pairs only, so a covered "
-        "non-carrier is GT no_call with DP > 0"
+        "every cell covering a called anchor, all of them genotyped: a covered "
+        "non-carrier is hom_ref at alt_reads 0, not a blank. GT is -1 only "
+        "where there was nothing to genotype, which includes the cell whose "
+        "every spanning read is deleted through the anchor (DP > 0, "
+        "REF + AD == 0)"
     ),
 }
 
-# Layer dtypes, kept as niche as possible
-# because the SNV var axis is every amplicon base.
+# Layer dtypes, kept as narrow as possible because GT and GQ are dense.
 _COUNT_DTYPE: Final[str] = "int32"
 _VAF_DTYPE: Final[str] = "float32"
 _GT_DTYPE: Final[str] = "int8"
 _GQ_DTYPE: Final[str] = "float32"
 
 
-def gt_code_expr(gt_col: str = GT, filter_col: str = FILTER) -> pl.Expr:
-    """Map the parquet genotype string to the layer code: 0 no_call, 1 hom_ref,
-    2 het, 3 hom_alt. Anything whose FILTER is not PASS is 0."""
+def gt_code_expr(gt_col: str = GT) -> pl.Expr:
+    """Map the parquet genotype string to the layer code: 1/2/3, else -1.
+
+    Blind to FILTER on purpose: GQ already carries the confidence. Read `gt`,
+    never `zygosity`, which is nulled on a failed filter and would send every
+    lowGQ row to -1.
+    """
     return (
-        pl.when(pl.col(filter_col) != FILTER_PASS)
-        .then(pl.lit(GT_NO_CALL))
-        .when(pl.col(gt_col) == GT_HOM_REF)
+        pl.when(pl.col(gt_col) == GT_HOM_REF)
         .then(pl.lit(GT_HOM_REF_CODE))
         .when(pl.col(gt_col) == GT_HET)
         .then(pl.lit(GT_HET_CODE))
         .when(pl.col(gt_col) == GT_HOM_ALT)
         .then(pl.lit(GT_HOM_ALT_CODE))
-        .otherwise(pl.lit(GT_NO_CALL))
+        .otherwise(pl.lit(GT_NOT_GENOTYPED))
         .cast(pl.Int8)
         .alias(_GT_CODE)
     )
@@ -245,7 +260,8 @@ def _sparse_layer(
 ) -> sp.csr_matrix:
     """Assemble one layer from the long (row, col, value) format.
 
-    Zeros are dropped, so a stored entry always means a non-zero one.
+    Zeros are dropped, so a stored entry always means a non-zero one. Read-count
+    layers only; GT and GQ have no value free to serve as a fill.
     """
     matrix = sp.coo_matrix(
         (
@@ -256,6 +272,21 @@ def _sparse_layer(
         dtype=dtype,
     ).tocsr()
     matrix.eliminate_zeros()
+    return matrix
+
+
+def _dense_layer(
+    frame: pl.DataFrame,
+    value_col: str,
+    shape: tuple[int, int],
+    dtype: str,
+    absent,
+) -> np.ndarray:
+    """Assemble GT / GQ as a dense array whose untouched slots read 'absent'."""
+    matrix = np.full(shape, absent, dtype=dtype)
+    matrix[frame[_ROW].to_numpy(), frame[_COL].to_numpy()] = (
+        frame[value_col].to_numpy().astype(dtype)
+    )
     return matrix
 
 
@@ -350,12 +381,12 @@ def _assemble(
 
 
 # ---------------------------------------------------------------------------
-# SNV: cells x every amplicon position
+# SNV: cells x measured amplicon positions
 # ---------------------------------------------------------------------------
 
 
 def amplicon_position_axis(fasta_path: str) -> pl.DataFrame:
-    """The full SNV var axis: one row per position of every amplicon contig.
+    """One row per position of every amplicon contig; _measured_axis cuts var from it.
 
     Carries amplicon_id, the 1-based amplicon_pos, ref_base, is_target_site and
     the column index. This is the only place the 0-based local position is
@@ -569,8 +600,8 @@ def _snv_entries(
             validate="1:1",
         )
         .with_columns(
-            pl.col(_GT_CODE).fill_null(GT_NO_CALL),
-            pl.col(GQ).fill_null(0.0),
+            pl.col(_GT_CODE).fill_null(GT_NOT_GENOTYPED),
+            pl.col(GQ).fill_null(GQ_NOT_GENOTYPED),
         )
     )
     missing = entries.filter(pl.col(_COL).is_null())
@@ -583,14 +614,50 @@ def _snv_entries(
     return entries
 
 
+def _measured_axis(full_axis: pl.DataFrame, composition: pl.DataFrame) -> pl.DataFrame:
+    """The var axis: the positions the pileup reached, re-indexed.
+
+    The pileup visits called positions only (count_variant.py), so a dropped
+    column was never looked at rather than looked at and found reference, and
+    carried no measurement: is_candidate_variant False, n_callers 0, every
+    pseudobulk_* null, zero cells covered. Its FASTA-derived fields survive in
+    uns via _declared_target_sites.
+    """
+    return (
+        full_axis.join(
+            composition.select(
+                pl.col(FEATURE).alias(VAR_AMPLICON_ID),
+                pl.col(POS_LOCAL).cast(pl.Int32),
+            ).unique(),
+            on=[VAR_AMPLICON_ID, POS_LOCAL],
+            how="semi",
+        )
+        .drop(_COL)
+        .with_columns(pl.int_range(pl.len(), dtype=pl.Int64).alias(_COL))
+    )
+
+
+def _declared_target_sites(full_axis: pl.DataFrame, axis: pl.DataFrame) -> pd.DataFrame:
+    """Every position the FASTA declares a target, and whether it was measured.
+
+    var holds measured columns only, so without this an unmeasured target site
+    leaves no trace in the object at all.
+    """
+    return (
+        full_axis.filter(pl.col(VAR_IS_TARGET_SITE))
+        .select(_VAR_NAME, VAR_AMPLICON_ID, VAR_AMPLICON_POS)
+        .with_columns(pl.col(_VAR_NAME).is_in(axis[_VAR_NAME]).alias(VAR_IS_MEASURED))
+        .to_pandas()
+    )
+
+
 def _snv_var(
     axis: pl.DataFrame,
     calls: pl.LazyFrame,
-    measured: np.ndarray,
     depth: sp.csr_matrix,
     nonref: sp.csr_matrix,
 ) -> pd.DataFrame:
-    """The SNV var: the FASTA axis, the catalog's site evidence, and the two
+    """The SNV var: the measured axis, the catalog's site evidence, and the two
     per-column cell counts."""
     var = _indexed_var(
         axis.join(
@@ -602,8 +669,9 @@ def _snv_var(
         .with_columns(
             pl.col(N_CALLERS).fill_null(0),
             pl.col(VAR_IS_CANDIDATE_VARIANT).fill_null(False),
-            # aligned by the sort above: axis row order is column order
-            pl.Series(VAR_IS_MEASURED, measured),
+            # Constant here, since the axis is the measured set. Kept for the
+            # merged object, where measured in A not B is the whole question.
+            pl.lit(True).alias(VAR_IS_MEASURED),
         )
         .select(
             _VAR_NAME,
@@ -631,7 +699,7 @@ def build_snv_anndata(
     calls: pl.LazyFrame,
     fasta_path: str,
 ) -> ad.AnnData:
-    """The mod["snv"] object: cells x every amplicon position.
+    """The mod["snv"] object: cells x the measured amplicon positions.
 
     Args:
         raw_snp: the long per-allele pileup dataframe (format_raw_snps).
@@ -639,11 +707,13 @@ def build_snv_anndata(
         calls: the catalog parquet filtered to type == 'SNV'.
         fasta_path: the amplicon reference; for the whole var axis.
 
-    Rows are the cells with at least one attributed read. MERGE_H5AD later
-    widens them to the barcode union across modalities.
+    Columns are the positions the pileup reached; the declared targets it did
+    not reach are in uns. Rows are the cells with at least one attributed read.
+    MERGE_H5AD later widens them to the barcode union across modalities.
     """
-    axis = amplicon_position_axis(fasta_path)
+    full_axis = amplicon_position_axis(fasta_path)
     composition = snv_base_composition(raw_snp).collect()
+    axis = _measured_axis(full_axis, composition)
     obs_names, rows = _row_index(composition)
     entries = _snv_entries(composition, rows, axis, genotypes, fasta_path)
 
@@ -654,15 +724,11 @@ def build_snv_anndata(
             for layer in SNV_AD_LAYERS.values()
         },
         LAYER_DP: _sparse_layer(entries, LAYER_DP, shape, _COUNT_DTYPE),
-        LAYER_GT: _sparse_layer(entries, _GT_CODE, shape, _GT_DTYPE),
-        LAYER_GQ: _sparse_layer(entries, GQ, shape, _GQ_DTYPE),
+        LAYER_GT: _dense_layer(entries, _GT_CODE, shape, _GT_DTYPE, GT_NOT_GENOTYPED),
+        LAYER_GQ: _dense_layer(entries, GQ, shape, _GQ_DTYPE, GQ_NOT_GENOTYPED),
     }
     nonref = _sparse_layer(entries, _NONREF, shape, _COUNT_DTYPE)
     depth = layers[LAYER_DP]
-
-    # Measured = the site was piled up at all, i.e. it reached the composition.
-    measured = np.zeros(axis.height, dtype=bool)
-    measured[entries[_COL].unique().to_numpy()] = True
 
     cells = _summarise_cells(depth, signal=nonref)
     obs = pd.DataFrame(
@@ -678,12 +744,15 @@ def build_snv_anndata(
     )
 
     return _assemble(
-        var=_snv_var(axis, calls, measured, depth, nonref),
+        var=_snv_var(axis, calls, depth, nonref),
         x_matrix=_sparse_layer(entries, _X, shape, _VAF_DTYPE),
         layers=layers,
         obs=obs,
         modality=SNV_MODALITY,
-        uns=SNV_UNS,
+        uns={
+            **SNV_UNS,
+            "declared_target_sites": _declared_target_sites(full_axis, axis),
+        },
     )
 
 
@@ -790,36 +859,6 @@ def indel_site_evidence(calls: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
-def indel_anchor_coverage(observed: pl.LazyFrame) -> pl.LazyFrame:
-    """Per (barcode, feature, anchor): depth, reference-supporting reads and
-    non-reference reads, over every cell spanning the anchor rather than only
-    the carriers.
-
-    This is the modality's denominator, so it cannot come from indel_alt_long:
-    that frame inner-joins on the called signature and therefore keeps carrier
-    cells only, which would make n_cells_covered a synonym for
-    n_cells_with_indel_support. A cell covering the anchor with nothing but
-    reference reads is the evidence that the event is absent there, and has to
-    be counted.
-
-    The non-reference count is taken as the complement of the reference one
-    rather than by filtering indel_len != 0, so that reads whose anchor base is
-    deleted by a larger event (indel_len null, which no comparison matches) are
-    counted rather than dropped. They carry a different indel at this
-    anchor, which is what OTHER_INDEL is for.
-    """
-    return (
-        observed.group_by(BARCODE, FEATURE, POS_LOCAL)
-        .agg(
-            pl.col(TOTAL_READS).first(),
-            pl.col(READS).filter(pl.col(INDEL_LEN) == 0).sum().alias(REF_READS),
-        )
-        .with_columns(
-            (pl.col(TOTAL_READS) - pl.col(REF_READS)).alias(_ANCHOR_INDEL_READS)
-        )
-    )
-
-
 def _indel_entries(
     coverage: pl.DataFrame,
     rows: pl.DataFrame,
@@ -851,7 +890,10 @@ def _indel_entries(
             validate="m:1",
         )
         .join(
-            genotypes.select(
+            # REF + AD == 0 at depth (every read another indel, or deleted
+            # through the anchor) is filter_indels' flat-likelihood 0/0 at GQ 0,
+            # not a genotype: left unjoined, it falls to -1 below.
+            genotypes.filter(pl.col(REF_READS) + pl.col(ALT_READS) > 0).select(
                 BARCODE,
                 *_EVENT_KEYS,
                 gt_code_expr(),
@@ -863,8 +905,8 @@ def _indel_entries(
         )
         .with_columns(
             pl.col(ALT_READS).fill_null(0),
-            pl.col(_GT_CODE).fill_null(GT_NO_CALL),
-            pl.col(GQ).fill_null(0.0),
+            pl.col(_GT_CODE).fill_null(GT_NOT_GENOTYPED),
+            pl.col(GQ).fill_null(GQ_NOT_GENOTYPED),
         )
         .with_columns(
             pl.when(pl.col(TOTAL_READS) > 0)
@@ -895,10 +937,9 @@ def build_indel_anndata(
 
     Columns are every called allele, so one nobody could attribute reads to is
     an all-zero column with event_qc_pass False. Rows are every cell covering a
-    called anchor, so DP and REF cover non-carriers too, but GT and GQ exist
-    only for the pairs a read was attributed to: a covered non-carrier is
-    no_call with its depth visible. DP is anchor-locus depth, a superset of the
-    reads spanning the deleted interval, so VAF is conservative.
+    called anchor, all of them genotyped, so a covered non-carrier is a hom-ref
+    with its depth visible. DP is anchor-locus depth, a superset of the reads
+    spanning the deleted interval, so VAF is conservative.
     """
     events = (
         indel_event_var(called_alleles)
@@ -915,7 +956,14 @@ def build_indel_anndata(
             f"{collisions.height} indel event(s) share a var_name: "
             f"{collisions[_VAR_NAME].unique().to_list()[:3]}"
         )
-    coverage = indel_anchor_coverage(observed).collect()
+
+    coverage = (
+        indel_anchor_coverage(observed)
+        .with_columns(
+            (pl.col(TOTAL_READS) - pl.col(REF_READS)).alias(_ANCHOR_INDEL_READS)
+        )
+        .collect()
+    )
     obs_names, rows = _row_index(coverage)
     entries = _indel_entries(coverage, rows, events, alt_long, genotypes)
 
@@ -928,8 +976,8 @@ def build_indel_anndata(
         # the three read layers partition DP. Still limited to called anchors:
         # an un-called cut site has no column here at all, rather than a zero.
         LAYER_OTHER_INDEL: _sparse_layer(entries, _OTHER_INDEL, shape, _COUNT_DTYPE),
-        LAYER_GT: _sparse_layer(entries, _GT_CODE, shape, _GT_DTYPE),
-        LAYER_GQ: _sparse_layer(entries, GQ, shape, _GQ_DTYPE),
+        LAYER_GT: _dense_layer(entries, _GT_CODE, shape, _GT_DTYPE, GT_NOT_GENOTYPED),
+        LAYER_GQ: _dense_layer(entries, GQ, shape, _GQ_DTYPE, GQ_NOT_GENOTYPED),
     }
     depth = layers[LAYER_DP]
     support = layers[LAYER_AD]
@@ -999,6 +1047,8 @@ def _indel_var(
         ],
         dtype="boolean",
     )
+    # The indel anchor was piled up. Until now the only proxy was event_qc_pass null.
+    var[VAR_IS_MEASURED] = cells_covered > 0
     # Declared but unknown: an indel target is an interval, the FASTA header
     # carries a point.
     var[VAR_IS_TARGET_SITE] = pd.array([pd.NA] * events.height, dtype="boolean")

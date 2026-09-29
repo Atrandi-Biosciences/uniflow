@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-import polars as pl
-from lib.pipeline.record import PipelineRecord
+import sys
 from enum import StrEnum
-from typing import Any
+from typing import Any, NoReturn
+
+import polars as pl
+
+from lib.pipeline.record import PipelineRecord
 
 
 class ReasonCode(StrEnum):
@@ -54,3 +57,17 @@ class StatusRecord(PipelineRecord):
             )
 
         return reason_code.value, value
+
+    def record_and_exit(self, reason: ReasonCode, message: str) -> NoReturn:
+        """Record why this step produced no output, then exit 0.
+
+        Not a failure: a sample with nothing to attribute is a valid outcome of
+        count_variant*.
+
+        Pairs the write with the exit because forgetting write_records leaves the
+        reason in the task log only, where nothing collects it.
+        """
+        self.add(reason.value, message)
+        self.write_records("status.parquet")
+        print(message)
+        sys.exit(0)

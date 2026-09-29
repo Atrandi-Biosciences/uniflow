@@ -139,3 +139,8 @@ def label_for(key: Any, default: str | None = None) -> str:
     if key in HUMAN_READABLE_NAMES_FROZEN:
         return HUMAN_READABLE_NAMES_FROZEN[key]
     return default if default is not None else str(key)
+
+
+# Genotype layer names
+LAYER_GT: Final[str] = "GT"
+LAYER_GQ: Final[str] = "GQ"

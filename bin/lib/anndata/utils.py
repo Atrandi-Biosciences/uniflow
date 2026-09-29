@@ -10,6 +10,12 @@ from pandas.api.types import (
     is_string_dtype,
 )
 
+from lib.common_const import LAYER_GQ, LAYER_GT
+
+# Layers where 0 is a genotype, not an absence: zero-filling GT would publish
+# every padded cell as a confident hom-ref across the whole panel.
+LAYER_PAD_VALUES: dict[str, float] = {LAYER_GT: -1, LAYER_GQ: np.nan}
+
 
 def add_empty_cells(adata: ad.AnnData, new_cell_names: list[str]) -> ad.AnnData:
     """
@@ -25,8 +31,8 @@ def add_empty_cells(adata: ad.AnnData, new_cell_names: list[str]) -> ad.AnnData:
     - Existing categorical obs columns are extended with "na" if needed.
     - Duplicate cell names are rejected.
     - X is extended with sparse zero rows.
-    - Every layer is extended with sparse zero rows of its own dtype so concat below
-    keeps the size low.
+    - Every layer is extended with zero rows of its own dtype, sparse where the
+    layer is, so concat below keeps the size low. LAYER_PAD_VALUES overrides it.
     - uns is carried over from the original, a concat would otherwise drop it.
     """
 
@@ -97,11 +103,14 @@ def add_empty_cells(adata: ad.AnnData, new_cell_names: list[str]) -> ad.AnnData:
 
     for key, layer in adata.layers.items():
         shape = (len(new_cell_names), adata.n_vars)
-        new_adata.layers[key] = (
-            sp.csr_matrix(shape, dtype=layer.dtype)
-            if sp.issparse(layer)
-            else np.zeros(shape, dtype=layer.dtype)
-        )
+        if key in LAYER_PAD_VALUES:
+            new_adata.layers[key] = np.full(
+                shape, LAYER_PAD_VALUES[key], dtype=layer.dtype
+            )
+        elif sp.issparse(layer):
+            new_adata.layers[key] = sp.csr_matrix(shape, dtype=layer.dtype)
+        else:
+            new_adata.layers[key] = np.zeros(shape, dtype=layer.dtype)
 
     return ad.concat(
         [adata, new_adata],

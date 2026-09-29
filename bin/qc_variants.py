@@ -148,12 +148,16 @@ def attribution_counts(
     """(called, attributed) distinct-allele counts for one variant class.
 
     called = distinct alleles of types
-    attributed = those that got a real per-cell row (non-null barcode) in the per-cell raw parquet.
+    attributed = those a cell actually carries reads of (alt_reads > 0) in the per-cell raw parquet.
     The variant catalog key is 1-based pos
     the per-cell key is 0-based pos_local_0based = pos - 1
     called - attributed is on TODO for silent-drop count: un-pileupablecalled
     alleles (indels also appear as zero-support null-barcode rows in the raw
     parquet. MNVs have no per-cell path, so attributed is 0 by construction).
+
+    The test is alt_reads, not the presence of a barcoded row: the indel parquet
+    now carries a row per covered (cell, event), non-carriers included, so
+    counting rows would silently make this a count of covered alleles.
     """
     called = (
         catalog.filter(pl.col("type").is_in(types))
@@ -166,8 +170,8 @@ def attribution_counts(
         .unique()
     )
     raw = pl.read_parquet(raw_path)
-    if "barcode" in raw.columns:
-        raw = raw.filter(pl.col("barcode").is_not_null())
+    if "alt_reads" in raw.columns:
+        raw = raw.filter(pl.col("alt_reads") > 0)
     attributed = called.join(
         raw.select("feature", "pos_local_0based", "ref", "alt").unique(),
         on=["feature", "pos_local_0based", "ref", "alt"],
