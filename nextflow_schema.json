@@ -9,6 +9,7 @@
       "title": "Input/output options",
       "type": "object",
       "required": [
+        "experiment_id",
         "product_id",
         "outdir",
         "input_csv"
@@ -42,8 +43,8 @@
           "type": "string",
           "title": "Experiment directory",
           "description": "Name for experiment directory. Must have date and JIRA id in format <date>_<RAR-123>_<any-descriptive-name>",
-          "pattern": "^[A-Za-z0-9_-]+$",
-          "errorMessage": "Experiment ID must be in format <alphanumeric and underscores>",
+          "pattern": "^[0-9]{8}_[A-Z]{3,}-[0-9]{3}_[A-Za-z0-9-]{1,}$",
+          "errorMessage": "Experiment ID must be in format <date>_<RAR-123>_<any-descriptive-name>, e.g., 20240101_RAR-123_experiment-name",
           "default": ""
         },
         "amplicon_fasta": {
