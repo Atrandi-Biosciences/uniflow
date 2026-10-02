@@ -2,7 +2,7 @@
   <img src="assets/branding/uniflow-docs-header.svg" alt="Uniflow Documentation" width="100%">
 </p>
 
-[← Repository](../README.md) · [Getting started](getting-started.md) · [Installation](installation.md) · [Inputs](inputs.md) · [Running](running.md) · [Outputs](outputs.md) · [Genotyping](genotype.md) · [Support](support.md)
+[← Repository](../README.md) · [Getting started](getting-started.md) · [Installation](installation.md) · [Inputs](inputs.md) · [Running](running.md) · [Outputs](outputs.md) · [Reports](reports.md) · [Genotyping](genotype.md) · [Support](support.md)
 
 ---
 
@@ -26,7 +26,7 @@ The archive does contain sample names and library IDs. Use neutral identifiers i
 
 ## Pipeline issue
 
-Use this route when the pipeline stops before completing. Send the `.nextflow.log` file from the directory where Uniflow was launched to your FAS contact.
+Use this route when the pipeline exits with an error or is missing expected outputs. Send the `.nextflow.log` file from the directory where Uniflow was launched to your FAS contact.
 
 Files in `pipeline_info/` contain additional execution diagnostics. Provide them if your FAS contact requests them; they are not required for the initial report.
 
@@ -39,3 +39,15 @@ Do not use public GitHub issues for customer support or attach files containing 
 ## General support channel
 
 You can always contact us via support@atrandi.com for support regarding your assay or pipeline issues.
+
+## Documentation sections
+
+1. [Getting started](docs/getting-started.md)
+2. [Installation](docs/installation.md)
+3. [Prepare inputs](docs/inputs.md)
+4. [Run Uniflow](docs/running.md)
+5. [Understand outputs](docs/outputs.md)
+6. [Output definitions](docs/specs/outputs.md)
+7. [QC report files](docs/reports.md)
+8. [Genotyping](docs/genotype.md)
+9. [Troubleshooting and support](docs/support.md)

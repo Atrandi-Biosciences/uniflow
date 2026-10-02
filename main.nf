@@ -149,6 +149,8 @@ workflow {
         
     }
 
+    samplesheet_ch = channel.fromPath(file(params.input_csv, checkIfExists: true))
+
     whitelist_ch = channel.fromList(
             [
                 file("${projectDir}/assets/barcodes/B4_${barcode_num}_v01/bcD_${barcode_num}.txt", checkIfExists: true),
@@ -196,7 +198,7 @@ workflow {
     DEMULTIPLEXING(
         libraries,
         BARCODE.out.barcode_mapping,
-        params.input_csv,
+        samplesheet_ch,
         inputs_validated,
         whitelist_file_ch,
         chemistry_file,
@@ -403,6 +405,7 @@ output {
         path { metrics_csv -> "experiment/" }
     }
     status {
+        enabled params.internal
         path { sample_id, status_csv -> "samples/${sample_id}/" }
     }
     qc_tarball {

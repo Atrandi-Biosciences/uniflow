@@ -2,7 +2,7 @@
   <img src="assets/branding/uniflow-docs-header.svg" alt="Uniflow Documentation" width="100%">
 </p>
 
-[← Repository](../README.md) · [Getting started](getting-started.md) · [Installation](installation.md) · [Inputs](inputs.md) · [Running](running.md) · [Outputs](outputs.md) · [Genotyping](genotype.md) · [Support](support.md)
+[← Repository](../README.md) · [Getting started](getting-started.md) · [Installation](installation.md) · [Inputs](inputs.md) · [Running](running.md) · [Outputs](outputs.md) · [Reports](reports.md) · [Genotyping](genotype.md) · [Support](support.md)
 
 ---
 
@@ -29,10 +29,10 @@ Start with `counts.h5mu` for downstream analysis. Use the parquet tables when yo
 
 ## Before you start
 
-- **`GT` 0 means no call, not reference.** Homozygous reference is `GT` 1. See the table below in section [Count Matrices](#count-matrices) for further explanation.
+- **`GT` -1 means not genotyped, not reference.** Homozygous reference is `GT` 1. Low-quality genotypes keep their `GT`, so also filter on `GQ`. See the table below in section [Count Matrices](#count-matrices) for further explanation.
 - **Select called cells first.** All modalities in `counts.h5mu` share one cell axis that holds every barcode seen in any modality. Select cells with, for example, `mdata.obs["amplicon:is_cell"]`.
-- **Unmeasured positions are unknown.** The `snv` modality has a column for every amplicon position, but only positions with `var["is_measured"]` true hold data.
-- **Indel non-carriers have no genotype.** A cell that covers an indel without a read carrying it has `DP` above 0 and `GT` 0.
+- **Positions without a column are unknown.** The `snv` modality has a column only for discovered positions that at least one cell read reached. A position without a column was not examined, not found to be reference.
+- **Indel non-carriers are genotyped.** A cell that covers an indel without a read carrying it is genotyped from its reference reads, normally as homozygous reference (`GT` 1).
 - **Only discovered variants are genotyped, from downsampled reads.** A variant with too little support in the pooled reads has no per-cell genotype, and read depths are capped at 100 reads per cell and amplicon by default.
 
 ## How genotypes are called
@@ -62,7 +62,7 @@ Read counts follow a beta-binomial distribution with an overdispersion of 0.091,
 - `gt` is the most likely genotype.
 - `pl_homref`, `pl_het` and `pl_homalt` are Phred-scaled genotype likelihoods, shifted so that the called genotype is 0.
 - `gq` is the second-smallest PL, capped at 99: how much more likely the called genotype is than the next best.
-- A genotype with `gq` below 30 is labelled `lowGQ`. In `counts.h5mu`, it is stored as `GT` 0.
+- A genotype with `gq` below 30 is labelled `lowGQ`. In `counts.h5mu`, it keeps its `GT` code; only `GQ` marks it.
 - `outlier_lod` is the log10 likelihood ratio of an unconstrained ALT read fraction against the called genotype. Positive values mean the reads fit none of the three genotypes well, as expected from doublets, ambient DNA or unequal allele amplification. It does not change `gt` or `gq`.
 
 Read depth limits `gq`. A homozygous call with no reads of the other allele reaches GQ 30 at about 21 reads. A balanced heterozygous call reaches GQ 30 at 4 reads but levels off near GQ 50 however deep the cell is sequenced. A single Q40 ALT read among 100 reads lowers a homozygous-reference call to GQ 29, so `lowGQ` `0/0` genotypes are either shallow or carry a few ALT reads, so we treat them as undetermined.
@@ -70,7 +70,7 @@ Read depth limits `gq`. A homozygous call with no reads of the other allele reac
 ### ALT allele of a genotype
 
 - **SNVs:** Each cell gets one genotype per position. Its ALT allele is the non-reference base with the most reads in that cell; ties go to the alphabetically first base. At a position with several ALT bases, cells can be genotyped against different bases, and **a cell's ALT is not necessarily an allele a caller reported**. Check `alt` and `callers` on the genotyped row.
-- **Indels:** Each cell receives one genotype per called indel, computed only when the cell has at least one read carrying that exact indel.
+- **Indels:** Each cell with a read spanning the anchor base of a called indel receives one genotype for that indel. A cell without a read carrying the indel is genotyped from its reference reads.
 
 ## Per-cell tables
 
@@ -85,7 +85,7 @@ In `variants_snv.parquet`, each cell has, for each discovered position that it c
 
 The cell's genotype is on exactly one of these rows, marked by `genotyped`: the `ALT` row of the base the cell was genotyped against, or the `REF` row when the cell shows no non-reference base other than `N`. The genotype columns (`variant_name`, `gt_filter`, `gt`, `gq`, the PLs, `outlier_lod` and `zygosity`) are empty on all other rows.
 
-In `variants_indel.parquet`, each row is one cell and one called indel, for cells with at least one read carrying the indel. A called indel that no cell read supports has a single row with an empty `barcode`.
+In `variants_indel.parquet`, each row is one cell and one called indel, for every cell with a read spanning the indel's anchor base; `alt_reads` is 0 for cells without a read carrying it. A called indel that no cell spans has a single row with an empty `barcode`.
 
 To get one genotype per cell and site, keep the rows where `genotyped` is true. To keep confident genotypes only, also require `gt_filter` to be `PASS`:
 
@@ -147,32 +147,32 @@ Load the counts, select called cells and count the carrier cells at each measure
 
 ```python
 import mudata as mu
+import numpy as np
 
 mdata = mu.read_h5mu("samples/<sample_name>/counts/counts.h5mu")
 cells = mdata.obs_names[mdata.obs["amplicon:is_cell"]]
 
 snv = mdata["snv"][cells]
-snv = snv[:, snv.var["is_measured"]]
-gt = snv.layers["GT"]
-carrier_cells = ((gt == 2) + (gt == 3)).sum(axis=0).A1
+gt, gq = snv.layers["GT"], snv.layers["GQ"]
+carrier_cells = (np.isin(gt, [2, 3]) & (gq >= 30)).sum(axis=0)
 ```
 
 Both modalities encode genotypes the same way:
 
 | `GT` | Meaning |
 | --- | --- |
-| `0` | No call: position not measured, cell not covered, `GQ` below 30, or, for indels, no read carrying the indel |
+| `-1` | Not genotyped: the cell does not cover the position, or, for indels, no read spanning the anchor base shows the reference or this indel (`REF` + `AD` is 0) |
 | `1` | Homozygous reference |
 | `2` | Heterozygous |
 | `3` | Homozygous ALT |
 
-`GQ` keeps its value for `lowGQ` genotypes, so `GT` 0 with `GQ` above 0 marks a low-quality genotype rather than a missing one.
+`0` is never written. Every genotype keeps its `GT` code whatever its `GQ`, so select confident genotypes with `GT` in 1, 2 or 3 and `GQ` of at least 30. `GQ` is `NaN` exactly where `GT` is -1; a `GQ` of 0 is a real value.
 
 Short definitions of `X`, depth and `GT` are also stored in each object, in `mdata["snv"].uns["snv"]` and `mdata["indel"].uns["indel"]`. In `mdata.obs`, the per-cell columns below carry the `snv:` or `indel:` prefix.
 
 ### `snv`: cells by amplicon positions
 
-Columns cover every position of every amplicon in the FASTA and are named `<amplicon_id>_<amplicon_pos>`. Zeros at positions where `is_measured` is false are unknown, not reference.
+Columns are the discovered positions that at least one cell read reached, named `<amplicon_id>_<amplicon_pos>`. Other amplicon positions have no column. `uns["declared_target_sites"]` lists the positions declared as targets in the amplicon FASTA and whether each was measured.
 
 `X` is the non-reference read fraction: `(DP - reads matching ref_base) / DP`, counting every non-reference base.
 
@@ -190,7 +190,7 @@ Columns cover every position of every amplicon in the FASTA and are named `<ampl
 | `amplicon_id` | Amplicon ID |
 | `amplicon_pos` | 1-based position in the amplicon |
 | `ref_base` | Reference base |
-| `is_measured` | At least one cell read was counted at this position. A discovered position can stay unmeasured when it has too few reads. |
+| `is_measured` | Always true, since only measured positions have columns. A discovered position with too few reads has no column. |
 | `is_target_site` | Experimental and reserved for position matching `snp_pos` in the amplicon FASTA header |
 | `is_candidate_variant` | A caller reported a variant at this position |
 | `n_callers` | Callers reporting any allele at this position. In the parquet tables, `n_callers` counts callers per allele instead. |
@@ -241,6 +241,7 @@ To count the cells covering an indel without carrying it, use `DP` above 0 with 
 | `n_cells_covered` | Cells with `DP` above 0 |
 | `n_cells_with_indel_support` | Cells with `AD` above 0 |
 | `event_qc_pass` | True when at least one cell carries the indel, false when cells cover the anchor base but none carries it, empty when no cell covers it |
+| `is_measured` | At least one cell covers the anchor base (`n_cells_covered` above 0) |
 | `is_target_site` | Always empty for indels |
 
 | `obs` column | Description |
@@ -330,3 +331,15 @@ Rows whose `modality` is `variants` in `samples/<sample_name>/metrics/metrics.cs
 | `--downsample_seed` | `42` | Seed for the read sampling |
 
 The other thresholds on this page, including the discovery floors, the genotype model and the GQ threshold, are set in `conf/variant.config`.
+
+## Documentation sections
+
+1. [Getting started](docs/getting-started.md)
+2. [Installation](docs/installation.md)
+3. [Prepare inputs](docs/inputs.md)
+4. [Run Uniflow](docs/running.md)
+5. [Understand outputs](docs/outputs.md)
+6. [Output definitions](docs/specs/outputs.md)
+7. [QC report files](docs/reports.md)
+8. [Genotyping](docs/genotype.md)
+9. [Troubleshooting and support](docs/support.md)

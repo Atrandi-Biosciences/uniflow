@@ -4,7 +4,7 @@
 //   - PER_AMPLICON_COVERAGE_QC : pseudobulk per-amplicon depth (samtools coverage)
 //   - PER_CELL_COVERAGE_QC     : per-(cell, amplicon) coverage tables + rank-knee plots
 //   - SUBSAMPLE_KEEPLIST       : CB-aware per-(cell, amplicon) cap -> read-name keep-list + stats
-//   - SUBSAMPLE_QC             : per-sample before/after depth histogram off those stats
+//   - SUBSAMPLE_QC             : per-sample depth histogram with the cap marked, off those stats
 //   - SUBSAMPLE_APPLY          : subset the aligned BAM to the keep-list (samtools view -N)
 
 // pseudobulk per-amplicon coverage. `samtools coverage` gives one row per

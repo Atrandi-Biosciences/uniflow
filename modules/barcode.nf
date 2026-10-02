@@ -1,7 +1,6 @@
 #!/usr/bin/env nextflow
 
 process EXTRACT_BARCODE {
-    label 'small_job'
     container "community.wave.seqera.io/library/gcc_pip_mudata_polars:966b9cfe2b439554"
     debug false
 

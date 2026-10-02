@@ -231,7 +231,7 @@ def plot_comparative_saturation_curves(
         + gg.aes(x=f"mean_{input_type}_reads_per_cell", y="value", color="sample_name")
         + gg.facet_wrap("variable", scales="free")
         + gg.geom_line()
-        + gg.theme(figure_size=(10, 4))
+        + gg.theme(figure_size=(10, 4), axis_text_x=gg.element_text(angle=45, hjust=1))
         + gg.ggtitle(f"Saturation curves for {sample_name}", subtitle=input_type)
     )
     plot.save(f"{input_type}_saturation_mqc.png")

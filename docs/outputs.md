@@ -2,7 +2,7 @@
   <img src="assets/branding/uniflow-docs-header.svg" alt="Uniflow Documentation" width="100%">
 </p>
 
-[← Repository](../README.md) · [Getting started](getting-started.md) · [Installation](installation.md) · [Inputs](inputs.md) · [Running](running.md) · [Outputs](outputs.md) · [Genotyping](genotype.md) · [Support](support.md)
+[← Repository](../README.md) · [Getting started](getting-started.md) · [Installation](installation.md) · [Inputs](inputs.md) · [Running](running.md) · [Outputs](outputs.md) · [Reports](reports.md) · [Genotyping](genotype.md) · [Support](support.md)
 
 ---
 
@@ -45,6 +45,8 @@ The exact files returned depend on the libraries, references, and product select
         │   ├── <sample_name>.consensus.vcf.gz
         │   └── <sample_name>.consensus.vcf.gz.tbi
         ├── RNA/
+        │   ├── <sample_name>.Aligned.sortedByCoord.out.bam
+        │   └── <sample_name>.Aligned.sortedByCoord.out.bam.bai
         ├── dev/
         │   ├── amplicon/
         │   ├── gene_expression/
@@ -117,3 +119,20 @@ See [Understand genotype outputs](genotype.md) for how genotypes are called, wha
 `metadata/` records the resolved sample sheet, product chemistry, and run parameters needed to understand or reproduce the run.
 
 `pipeline_info/` contains Nextflow execution diagnostics. These files describe task resource use, timing, and failures; they are primarily useful when troubleshooting a pipeline-level problem.
+
+## Working with Uniflow outputs
+
+For examples of loading Uniflow count data and performing downstream analysis, see the relevant Uniflow analysis [vignettes](https://github.com/Atrandi-Biosciences/vignettes).
+
+
+## Documentation sections
+
+1. [Getting started](docs/getting-started.md)
+2. [Installation](docs/installation.md)
+3. [Prepare inputs](docs/inputs.md)
+4. [Run Uniflow](docs/running.md)
+5. [Understand outputs](docs/outputs.md)
+6. [Output definitions](docs/specs/outputs.md)
+7. [QC report files](docs/reports.md)
+8. [Genotyping](docs/genotype.md)
+9. [Troubleshooting and support](docs/support.md)

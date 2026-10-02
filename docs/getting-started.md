@@ -2,7 +2,7 @@
   <img src="assets/branding/uniflow-docs-header.svg" alt="Uniflow Documentation" width="100%">
 </p>
 
-[← Repository](../README.md) · [Getting started](getting-started.md) · [Installation](installation.md) · [Inputs](inputs.md) · [Running](running.md) · [Outputs](outputs.md) · [Genotyping](genotype.md) · [Support](support.md)
+[← Repository](../README.md) · [Getting started](getting-started.md) · [Installation](installation.md) · [Inputs](inputs.md) · [Running](running.md) · [Outputs](outputs.md) · [Reports](reports.md) · [Genotyping](genotype.md) · [Support](support.md)
 
 ---
 
@@ -48,9 +48,12 @@ A modality is the data analytical representation derived from a library. The cur
 
 ## Documentation sections
 
-1. [Install Uniflow](installation.md)
-2. [Prepare inputs](inputs.md)
-3. [Run Uniflow](running.md)
-4. [Understand outputs](outputs.md)
-5. [Understand genotype outputs](genotype.md)
-6. [Troubleshooting and support](support.md)
+1. [Getting started](docs/getting-started.md)
+2. [Installation](docs/installation.md)
+3. [Prepare inputs](docs/inputs.md)
+4. [Run Uniflow](docs/running.md)
+5. [Understand outputs](docs/outputs.md)
+6. [Output definitions](docs/specs/outputs.md)
+7. [QC report files](docs/reports.md)
+8. [Genotyping](docs/genotype.md)
+9. [Troubleshooting and support](docs/support.md)

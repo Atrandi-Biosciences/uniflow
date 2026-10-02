@@ -2,7 +2,7 @@
   <img src="assets/branding/uniflow-docs-header.svg" alt="Uniflow Documentation" width="100%">
 </p>
 
-[← Repository](../README.md) · [Getting started](getting-started.md) · [Installation](installation.md) · [Inputs](inputs.md) · [Running](running.md) · [Outputs](outputs.md) · [Genotyping](genotype.md) · [Support](support.md)
+[← Repository](../README.md) · [Getting started](getting-started.md) · [Installation](installation.md) · [Inputs](inputs.md) · [Running](running.md) · [Outputs](outputs.md) · [Reports](reports.md) · [Genotyping](genotype.md) · [Support](support.md)
 
 ---
 
@@ -22,7 +22,11 @@ Input and output paths may use either the local filesystem or S3 URLs.
 
 Uniflow processes a library type only when both its FASTQ inputs and required reference are provided. If either is missing, that library type is skipped. For example, an experiment with RNA and DNA libraries but only a STAR index runs the RNA analysis and skips DNA analysis.
 
-Customers are responsible for creating and validating their STAR index. The index must be built with STAR 2.7.11b, matching the version used by Uniflow.
+Customers are responsible for creating and validating their own custom STAR indexes. The index must be built with STAR 2.7.11b, matching the version used by Uniflow.
+
+For convenience, pre-built human and mouse STAR reference indices are available for download from [s3://atrandi-public/public/star_indexes/GRCm39/ and s3://atrandi-public/public/star_indexes/GRCh38/, respectively]. These references use Ensembl primary genome assembly sequences and GENCODE annotations (v44 / Ensembl 110 for human and vM33 / Ensembl 110 for mouse). Annotations are filtered to retain protein-coding, lncRNA, immunoglobulin, and T-cell-receptor gene biotypes.
+
+We recommend you download the indexes to your local infrastructure before running the pipeline.
 
 ## Create the amplicon reference
 
@@ -86,3 +90,15 @@ Pass one of these values to `--product_id`:
 | `B4_96_v1-no-variant` | 96 | Disabled |
 
 Use a `-no-variant` product when the data is not suitable for variant calling. The remaining `gene expression` and `amplicon` analysis still runs.
+
+## Documentation sections
+
+1. [Getting started](docs/getting-started.md)
+2. [Installation](docs/installation.md)
+3. [Prepare inputs](docs/inputs.md)
+4. [Run Uniflow](docs/running.md)
+5. [Understand outputs](docs/outputs.md)
+6. [Output definitions](docs/specs/outputs.md)
+7. [QC report files](docs/reports.md)
+8. [Genotyping](docs/genotype.md)
+9. [Troubleshooting and support](docs/support.md)

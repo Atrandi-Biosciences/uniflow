@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 
 import sys
-import polars as pl
 from typing import Final
-from lib.plotting.barcode import (
-    plot_barcode_occurence_heatmap,
-    prepare_barcode_occurence_data,
-    plot_barcode_upset_plot,
-    plot_per_base_substitution_rates,
-)
+
+import polars as pl
 from lib.common_const import (
-    BARCODE_D,
-    BARCODE_C,
-    BARCODE_B,
-    BARCODE_A,
     BARCODE,
+    BARCODE_A,
+    BARCODE_B,
+    BARCODE_C,
+    BARCODE_D,
     BARCODE_POSITION,
     HUMAN_READABLE_NAMES,
     LibraryType,
+)
+from lib.plotting.barcode import (
+    plot_barcode_occurence_heatmap,
+    plot_barcode_upset_plot,
+    plot_per_base_substitution_rates,
+    prepare_barcode_occurence_data,
 )
 
 # Declare inputs here
@@ -40,7 +41,9 @@ raw_bc_corrected = pl.scan_parquet(raw_bc_corrected_path).limit(1000000)
 print("Upset Plots")
 
 substitution_df = pl.read_parquet(substitution_parquet_path)
-plot_per_base_substitution_rates(substitution_df, sample_name=library_id)
+# edge case of error-free R2 (e.g., synthetic data)
+if substitution_df.height:
+    plot_per_base_substitution_rates(substitution_df, sample_name=library_id)
 
 
 plot_barcode_upset_plot(
