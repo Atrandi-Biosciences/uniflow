@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/atrandi/uniflow/nextflow_schema.json",
+  "title": "uniflow pipeline parameters",
+  "description": "RNA + DNA co-sequencing pipeline parameters for Nextflow (nf-core style JSON Schema)",
+  "type": "object",
+  "$defs": {
+    "general": {
+      "title": "Input/output options",
+      "type": "object",
+      "required": [
+        "product_id",
+        "outdir",
+        "input_csv"
+      ],
+      "properties": {
+        "protocol": {
+          "type": "string",
+          "title": "Protocol",
+          "description": "Protocol describing barcode/UMI structure for STARsolo.",
+          "default": "CB_UMI_Complex"
+        },
+        "solofeature": {
+          "type": "string",
+          "title": "STARsolo feature",
+          "description": "Feature for STARsolo quantification (e.g., GeneFull, Gene, SJ).",
+          "default": "GeneFull"
+        },
+        "star_index": {
+          "type": "string",
+          "title": "STAR genome index path",
+          "description": "Filesystem path to STAR genome index directory.",
+          "format": "directory-path"
+        },
+        "outdir": {
+          "type": "string",
+          "title": "Output directory",
+          "description": "Filesystem path to the output directory.",
+          "format": "directory-path"
+        },
+        "experiment_id": {
+          "type": "string",
+          "title": "Experiment directory",
+          "description": "Name for experiment directory. Must have date and JIRA id in format <date>_<RAR-123>_<any-descriptive-name>",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "errorMessage": "Experiment ID must be in format <alphanumeric and underscores>",
+          "default": ""
+        },
+        "amplicon_fasta": {
+          "type": "string",
+          "title": "Amplicon targets FASTA",
+          "description": "Filesystem path to FASTA with amplicon targets used for DNA alignment/counting.",
+          "format": "file-path"
+        },
+        "trimming_length": {
+          "type": "integer",
+          "title": "Trimming length",
+          "description": "Length to trim reads to for RNA alignment (e.g., 100).",
+          "default": 100
+        },
+        "product_id": {
+          "type": "string",
+          "title": "Product ID",
+          "description": "Product ID used to select whitelist files (e.g., B4_24_v1 or B4_96_v1).",
+          "enum": [
+            "B4_24_v1",
+            "B4_96_v1",
+            "B4_24_v1-no-variant",
+            "B4_96_v1-no-variant"
+          ]
+        },
+        "disable_validation": {
+          "type": "boolean",
+          "title": "Disable input validation",
+          "description": "When true, disables INPUT_VALIDATION workflow. This is not recommended unless you are confident in your inputs.",
+          "default": false
+        },
+        "internal": {
+          "type": "boolean",
+          "title": "Internal flag",
+          "description": "Indicates whether this is an internal run or a customer run.",
+          "default": true,
+          "hidden": true
+        },
+        "input_csv": {
+          "type": "string",
+          "title": "Samplesheet CSV",
+          "description": "CSV with columns: library_name, library_type (RNA/DNA), protocol_version, fastq_1, fastq_2, [optional] demultiplexing_indices",
+          "format": "file-path",
+          "exists": true,
+          "schema": "assets/schema_input.json",
+          "mimetype": "text/csv",
+          "pattern": "^\\S+\\.csv$",
+          "fa_icon": "fas fa-file-csv",
+          "errorMessage": "The input must be a valid CSV file path with no spaces, ending in '.csv', and must exist."
+        }
+      }
+    },
+    "variant_calling": {
+      "title": "Variant calling specific options",
+      "type": "object",
+      "description": "Parameters controlling the bulk variant-calling subworkflow on amplicon BAMs.",
+      "properties": {
+        "run_variant_calling": {
+          "type": "boolean",
+          "title": "Run variant calling flag",
+          "description": "When false, no DNA sample runs the variant-calling subworkflow. The per-sample 'run_variant_calling' samplesheet column overrides this default.",
+          "default": true
+        },
+        "variant_callers": {
+          "type": "string",
+          "title": "Variant caller list",
+          "description": "Comma-separated list of variant callers to run. Accepted values are 'freebayes', 'bcftools', 'vardict', 'deepvariant', and 'gatkhc'. ('lofreq' is still wired through but excluded from the default — its site-only output lacks FORMAT/AD,DP so it does not contribute to the consensus FORMAT-derived summaries until an INFO→FORMAT lift is implemented.) To disable variant calling entirely, set 'run_variant_calling: false' instead of an empty value. Subsetting permitted.",
+          "pattern": "^(freebayes|lofreq|bcftools|vardict|deepvariant|gatkhc)(,(freebayes|lofreq|bcftools|vardict|deepvariant|gatkhc))*$",
+          "default": "freebayes,bcftools,gatkhc,vardict",
+          "errorMessage": "variant_callers must be a comma-separated, non-empty list of values from [freebayes, lofreq, bcftools, vardict, deepvariant, gatkhc] (e.g. 'freebayes,lofreq'). No trailing comma. To disable variant calling, set 'run_variant_calling: false' instead."
+        },
+        "amplicon_bed": {
+          "type": "string",
+          "title": "Amplicon target BED",
+          "description": "Optional target BED for callers that require regions (VarDict, GATK_HC, DeepVariant). When null, derived once from amplicon_fasta via BEDTOOLS_MAKEWINDOWS (one record per contig, full-length interval). When set, the supplied BED is used directly.",
+          "format": "file-path",
+          "default": null
+        },
+        "gq_calibration": {
+          "type": "string",
+          "title": "Genotype-quality calibration source",
+          "description": "Whether this sample has its own ground-truth VCF. The beta-binomial overdispersion rho, and therefore every per-cell GQ, cannot be estimated without a truth set, so a sample without one inherits the constant calibrated on a reference run and its GQ is optimistic by however much this sample is more overdispersed. GT and outlier_lod are unaffected either way. Use 'truth-calibrated' only when the sample has its own donor VCF; a declared target list does not qualify. This is a declaration the data cannot settle, so it is set per launch rather than in conf/variant.config, and it is read only by the detection-power report.",
+          "enum": [
+            "inherited",
+            "truth-calibrated"
+          ],
+          "default": "inherited",
+          "hidden": true,
+          "errorMessage": "gq_calibration must be either 'inherited' (the sample has no ground-truth VCF, which is every production run) or 'truth-calibrated' (the sample has its own donor VCF and rho was calibrated on it)."
+        }
+      }
+    },
+    "downsampling": {
+      "title": "Read downsampling options",
+      "type": "object",
+      "description": "CB-aware per-(cell, amplicon) read downsampling. Enabled by default; set per_cell_per_amplicon_downsample=false to restore the full-depth baseline.",
+      "properties": {
+        "per_cell_per_amplicon_downsample": {
+          "type": "boolean",
+          "title": "Per-(cell, amplicon) downsampling",
+          "description": "When true (default), applies a CB-aware per-(cell, amplicon) cap (keep-list + samtools view -N) to the variant-layer BAM (discovery + per-cell); counts/cells stay at full depth. Set false to disable and keep the variant-layer BAM at full depth.",
+          "default": true
+        },
+        "downsample_reads_per_cell_amplicon": {
+          "type": "integer",
+          "title": "Per-(cell, amplicon) read cap",
+          "description": "Maximum reads kept per (cell, amplicon) when per_cell_per_amplicon_downsample is true; cell-amplicons with fewer reads are kept whole. Also the candidate cap N marked on the coverage QC.",
+          "default": 100,
+          "minimum": 1
+        },
+        "downsample_seed": {
+          "type": "integer",
+          "title": "Downsampling seed",
+          "description": "Fixed seed for reproducible sampling (the per-cell keep-list draw).",
+          "default": 42,
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "#/$defs/general"
+    },
+    {
+      "$ref": "#/$defs/variant_calling"
+    },
+    {
+      "$ref": "#/$defs/downsampling"
+    }
+  ]
+}

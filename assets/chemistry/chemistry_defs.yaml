@@ -1,0 +1,84 @@
+B4-24_v1:
+  description: "24 barcodes, 4 segments, version 1"
+  structure:
+    rna:
+      offset: 0
+      pattern: DDDDDDDDOOOOCCCCCCCCNNNNBBBBBBBBMMMMAAAAAAAALLLLHHHHHHHHHHHHHHUUUUUUUU
+      mappings:
+        barcode:
+          D: Barcode D
+          C: Barcode C
+          B: Barcode B
+          A: Barcode A
+        handle:
+          H: RNA Handle
+        UMI:
+          U: UMI
+        linker:
+          O: Linker D
+          N: Linker C
+          M: Linker B
+          L: Linker A
+    dna:
+      offset: 0
+      pattern: DDDDDDDDOOOOCCCCCCCCNNNNBBBBBBBBMMMMAAAAAAAALLLL
+      mappings:
+        barcode:
+          D: Barcode D
+          C: Barcode C
+          B: Barcode B
+          A: Barcode A
+        linker:
+          O: Linker D
+          N: Linker C
+          M: Linker B
+          L: Linker A
+  references:
+    barcode:
+      path: assets/chemistry/B4_24_v01/barcode_reference.csv
+    handle:
+      path: assets/chemistry/B4_24_v01/handle_reference.csv
+  demultiplexing:
+    parts: A
+B4-96_v1:
+  description: "96 barcodes, 4 segments, version 1"
+  structure:
+    rna:
+      offset: 0
+      pattern: DDDDDDDDOOOOCCCCCCCCNNNNBBBBBBBBMMMMAAAAAAAALLLLHHHHHHHHHHHHHHUUUUUUUU
+      mappings:
+        barcode:
+          D: Barcode D
+          C: Barcode C
+          B: Barcode B
+          A: Barcode A
+        handle:
+          H: RNA Handle
+        UMI:
+          U: UMI
+        linker:
+          O: Linker D
+          N: Linker C
+          M: Linker B
+          L: Linker A
+    dna:
+      offset: 0
+      pattern: DDDDDDDDOOOOCCCCCCCCNNNNBBBBBBBBMMMMAAAAAAAALLLL
+      mappings:
+        barcode:
+          D: Barcode D
+          C: Barcode C
+          B: Barcode B
+          A: Barcode A
+        linker:
+          O: Linker D
+          N: Linker C
+          M: Linker B
+          L: Linker A
+  references:
+    barcode:
+      path: assets/chemistry/B4_96_v01/barcode_reference.csv
+    handle:
+      path: assets/chemistry/B4_96_v01/handle_reference.csv
+  demultiplexing:
+    parts: A

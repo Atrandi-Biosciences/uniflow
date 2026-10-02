@@ -1,0 +1,67 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/nf-core/rnaseq/master/assets/schema_input.json",
+    "title": "Uniflow - params.input_csv schema",
+    "description": "Schema for the file provided with params.input_csv",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "sample_name": {
+                "type": "string",
+                "pattern": "^[\\w-]+$",
+                "errorMessage": "Sample name must be provided and can only contain letters, numbers, underscores, and hyphens. Example: 'Sample-1'",
+                "meta": [
+                    "sample_name"
+                ]
+            },
+            "fastq_1": {
+                "type": "string",
+                "pattern": "^(?:.*)\\/[\\w-]+_L\\d+_R1_001\\.fastq\\.gz$",
+                "format": "file-path",
+                "errorMessage": "FastQ file for reads 1 must be provided, cannot contain spaces and must have extension '.fastq.gz'",
+                "exists": true
+            },
+            "fastq_2": {
+                "type": "string",
+                "pattern": "^(?:.*)\\/[\\w-]+_L\\d+_R2_001\\.fastq\\.gz$",
+                "format": "file-path",
+                "errorMessage": "FastQ file for reads 2 cannot contain spaces and must have extension '.fastq.gz'",
+                "exists": true
+            },
+            "library_type": {
+                "type": "string",
+                "enum": [
+                    "DNA",
+                    "RNA"
+                ],
+                "errorMessage": "Library type must be either 'DNA' or 'RNA'",
+                "meta": [
+                    "library_type"
+                ]
+            },
+            "demultiplexing_indices": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9]+(?:;[A-Za-z0-9]+)*$",
+                "meta": [
+                    "demultiplexing_indices"
+                ],
+                "errorMessage": "Demultiplexing indices must be semicolon-separated strings containing only alphanumeric characters. Example: 'A1;A2;A3'"
+            },
+            "force_cells": {
+                "type": "integer",
+                "minimum": 1,
+                "meta": [
+                    "force_cells"
+                ],
+                "errorMessage": "Force cells must be a positive integer. Example: 5000"
+            }
+        },
+        "required": [
+            "sample_name",
+            "fastq_1",
+            "fastq_2",
+            "library_type"
+        ]
+    }
+}

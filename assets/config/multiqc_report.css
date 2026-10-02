@@ -1,0 +1,4 @@
+#mqc_versions_table th:first-child,
+#mqc_versions_table td:first-child {
+    display: none;
+}

@@ -1,0 +1,334 @@
+{
+    "B4-24_v1": {
+        "id": "B4-24_v1",
+        "description": "24 barcodes, 4 segments, version 1",
+        "libraries": {
+            "rna": [
+                {
+                    "Barcode D": {
+                        "letter": "D",
+                        "type": "barcode",
+                        "start": 0,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker D": {
+                        "letter": "O",
+                        "type": "linker",
+                        "start": 8,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode C": {
+                        "letter": "C",
+                        "type": "barcode",
+                        "start": 12,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker C": {
+                        "letter": "N",
+                        "type": "linker",
+                        "start": 20,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode B": {
+                        "letter": "B",
+                        "type": "barcode",
+                        "start": 24,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker B": {
+                        "letter": "M",
+                        "type": "linker",
+                        "start": 32,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode A": {
+                        "letter": "A",
+                        "type": "barcode",
+                        "start": 36,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker A": {
+                        "letter": "L",
+                        "type": "linker",
+                        "start": 44,
+                        "length": 4
+                    }
+                },
+                {
+                    "RNA Handle": {
+                        "letter": "H",
+                        "type": "handle",
+                        "start": 48,
+                        "length": 14
+                    }
+                },
+                {
+                    "UMI": {
+                        "letter": "U",
+                        "type": "UMI",
+                        "start": 62,
+                        "length": 8
+                    }
+                }
+            ],
+            "dna": [
+                {
+                    "Barcode D": {
+                        "letter": "D",
+                        "type": "barcode",
+                        "start": 0,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker D": {
+                        "letter": "O",
+                        "type": "linker",
+                        "start": 8,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode C": {
+                        "letter": "C",
+                        "type": "barcode",
+                        "start": 12,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker C": {
+                        "letter": "N",
+                        "type": "linker",
+                        "start": 20,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode B": {
+                        "letter": "B",
+                        "type": "barcode",
+                        "start": 24,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker B": {
+                        "letter": "M",
+                        "type": "linker",
+                        "start": 32,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode A": {
+                        "letter": "A",
+                        "type": "barcode",
+                        "start": 36,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker A": {
+                        "letter": "L",
+                        "type": "linker",
+                        "start": 44,
+                        "length": 4
+                    }
+                }
+            ]
+        },
+        "references": {
+            "barcode": {
+                "path": "assets/chemistry/B4_24_v01/barcode_reference.csv"
+            },
+            "handle": {
+                "path": "assets/chemistry/B4_24_v01/handle_reference.csv"
+            }
+        },
+        "demultiplexing_strategy": {
+            "type": "full",
+            "symbols": "A"
+        }
+    },
+    "B4-96_v1": {
+        "id": "B4-96_v1",
+        "description": "96 barcodes, 4 segments, version 1",
+        "libraries": {
+            "rna": [
+                {
+                    "Barcode D": {
+                        "letter": "D",
+                        "type": "barcode",
+                        "start": 0,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker D": {
+                        "letter": "O",
+                        "type": "linker",
+                        "start": 8,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode C": {
+                        "letter": "C",
+                        "type": "barcode",
+                        "start": 12,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker C": {
+                        "letter": "N",
+                        "type": "linker",
+                        "start": 20,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode B": {
+                        "letter": "B",
+                        "type": "barcode",
+                        "start": 24,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker B": {
+                        "letter": "M",
+                        "type": "linker",
+                        "start": 32,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode A": {
+                        "letter": "A",
+                        "type": "barcode",
+                        "start": 36,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker A": {
+                        "letter": "L",
+                        "type": "linker",
+                        "start": 44,
+                        "length": 4
+                    }
+                },
+                {
+                    "RNA Handle": {
+                        "letter": "H",
+                        "type": "handle",
+                        "start": 48,
+                        "length": 14
+                    }
+                },
+                {
+                    "UMI": {
+                        "letter": "U",
+                        "type": "UMI",
+                        "start": 62,
+                        "length": 8
+                    }
+                }
+            ],
+            "dna": [
+                {
+                    "Barcode D": {
+                        "letter": "D",
+                        "type": "barcode",
+                        "start": 0,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker D": {
+                        "letter": "O",
+                        "type": "linker",
+                        "start": 8,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode C": {
+                        "letter": "C",
+                        "type": "barcode",
+                        "start": 12,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker C": {
+                        "letter": "N",
+                        "type": "linker",
+                        "start": 20,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode B": {
+                        "letter": "B",
+                        "type": "barcode",
+                        "start": 24,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker B": {
+                        "letter": "M",
+                        "type": "linker",
+                        "start": 32,
+                        "length": 4
+                    }
+                },
+                {
+                    "Barcode A": {
+                        "letter": "A",
+                        "type": "barcode",
+                        "start": 36,
+                        "length": 8
+                    }
+                },
+                {
+                    "Linker A": {
+                        "letter": "L",
+                        "type": "linker",
+                        "start": 44,
+                        "length": 4
+                    }
+                }
+            ]
+        },
+        "references": {
+            "barcode": {
+                "path": "assets/chemistry/B4_96_v01/barcode_reference.csv"
+            },
+            "handle": {
+                "path": "assets/chemistry/B4_96_v01/handle_reference.csv"
+            }
+        },
+        "demultiplexing_strategy": {
+            "type": "full",
+            "symbols": "A"
+        }
+    }
+}
